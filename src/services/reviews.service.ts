@@ -2,6 +2,11 @@ import { apiClient } from "@/lib/axios";
 import type { Review, CreateReviewPayload } from "@/types/review.types";
 
 export const reviewsService = {
+  async getMine(): Promise<Review[]> {
+    const { data } = await apiClient.get<Review[]>("/reviews/mine");
+    return data;
+  },
+
   async getByNegocio(negocioId: number): Promise<Review[]> {
     const { data } = await apiClient.get<Review[]>(`/reviews/negocio/${negocioId}`);
     return data;

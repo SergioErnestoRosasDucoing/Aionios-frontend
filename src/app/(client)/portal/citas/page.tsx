@@ -5,24 +5,27 @@ import Link from "next/link";
 import {
   CalendarDays, Plus, Clock, CheckCircle, XCircle,
   MapPin, ChevronRight, Loader2, CreditCard, X,
-  DollarSign, Banknote, Smartphone,
+  DollarSign, Banknote, Smartphone, Star,
 } from "lucide-react";
 import { requestsService } from "@/services/requests.service";
 import { servicesService } from "@/services/services.service";
 import { paymentsService } from "@/services/payments.service";
+import { reviewsService } from "@/services/reviews.service";
+import { useAuth } from "@/context/AuthContext";
 import type { SolicitudCliente } from "@/types/request.types";
 import type { Service } from "@/types/service.types";
+import type { Review } from "@/types/review.types";
 
 const ESTADO_CONFIG = {
-  PENDIENTE:  { label: "Pendiente",  icon: Clock,        cls: "text-amber-700 bg-amber-50 border-amber-200"      },
-  CONFIRMADA: { label: "Confirmada", icon: CheckCircle,  cls: "text-emerald-700 bg-emerald-50 border-emerald-200" },
-  CANCELADA:  { label: "Cancelada",  icon: XCircle,      cls: "text-rose-700 bg-rose-50 border-rose-200"          },
+  PENDIENTE:  { label: "Pendiente",  icon: Clock,       cls: "text-amber-700 bg-amber-50 border-amber-200"       },
+  CONFIRMADA: { label: "Confirmada", icon: CheckCircle, cls: "text-emerald-700 bg-emerald-50 border-emerald-200"  },
+  CANCELADA:  { label: "Cancelada",  icon: XCircle,     cls: "text-rose-700 bg-rose-50 border-rose-200"           },
 } as const;
 
 const METODOS = [
-  { value: "efectivo",      label: "Efectivo",       icon: Banknote    },
-  { value: "tarjeta",       label: "Tarjeta",         icon: CreditCard  },
-  { value: "transferencia", label: "Transferencia",   icon: Smartphone  },
+  { value: "efectivo",      label: "Efectivo",     icon: Banknote   },
+  { value: "tarjeta",       label: "Tarjeta",      icon: CreditCard },
+  { value: "transferencia", label: "Transferencia",icon: Smartphone },
 ] as const;
 
 function formatFecha(iso: string) {
@@ -43,44 +46,77 @@ function isPaid(cita: SolicitudCliente) {
   return cita.pagos.some((p) => p.estado_pago === "COMPLETADO");
 }
 
-interface PayModal {
-  cita: SolicitudCliente;
-  precio: number;
+interface PayModal  { cita: SolicitudCliente; precio: number; }
+interface RevModal  { cita: SolicitudCliente; }
+
+function StarPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange(n)}
+          onMouseEnter={() => setHover(n)}
+          onMouseLeave={() => setHover(0)}
+          className="cursor-pointer"
+        >
+          <Star
+            className={`w-8 h-8 transition-colors ${
+              n <= (hover || value) ? "fill-amber-400 text-amber-400" : "text-slate-200"
+            }`}
+          />
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export default function CitasPage() {
-  const [citas, setCitas]       = useState<SolicitudCliente[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [tab, setTab]           = useState<"proximas" | "pasadas">("proximas");
+  const { user } = useAuth();
 
-  // Payment modal state
-  const [payModal, setPayModal]   = useState<PayModal | null>(null);
-  const [metodo, setMetodo]       = useState<string>("efectivo");
-  const [monto, setMonto]         = useState<string>("");
-  const [paying, setPaying]       = useState(false);
-  const [payError, setPayError]   = useState<string | null>(null);
+  const [citas,    setCitas]    = useState<SolicitudCliente[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [reviews,  setReviews]  = useState<Review[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [tab,      setTab]      = useState<"proximas" | "pasadas">("proximas");
+
+  // Payment modal
+  const [payModal,  setPayModal]  = useState<PayModal | null>(null);
+  const [metodo,    setMetodo]    = useState("efectivo");
+  const [monto,     setMonto]     = useState("");
+  const [paying,    setPaying]    = useState(false);
+  const [payError,  setPayError]  = useState<string | null>(null);
+
+  // Review modal
+  const [revModal,  setRevModal]  = useState<RevModal | null>(null);
+  const [rating,    setRating]    = useState(5);
+  const [comentario,setComentario]= useState("");
+  const [reviewing, setReviewing] = useState(false);
+  const [revError,  setRevError]  = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
       requestsService.getMine(),
       servicesService.getAll(),
+      reviewsService.getMine(),
     ])
-      .then(([reqs, svcs]) => { setCitas(reqs); setServices(svcs); })
+      .then(([reqs, svcs, revs]) => { setCitas(reqs); setServices(svcs); setReviews(revs); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  const serviceFor = (mongoId: string) =>
-    services.find((s) => s._id === mongoId);
+  const serviceFor  = (mongoId: string) => services.find((s) => s._id === mongoId);
+  const reviewFor   = (negocioId: number) => reviews.find((r) => r.negocio_id === negocioId);
 
-  const proximas = citas.filter((c) => isUpcoming(c.fecha_hora_propuesta) && c.estado !== "CANCELADA");
-  const pasadas  = citas.filter((c) => !isUpcoming(c.fecha_hora_propuesta) || c.estado === "CANCELADA");
+  const proximas  = citas.filter((c) => isUpcoming(c.fecha_hora_propuesta) && c.estado !== "CANCELADA");
+  const pasadas   = citas.filter((c) => !isUpcoming(c.fecha_hora_propuesta) || c.estado === "CANCELADA");
   const displayed = tab === "proximas" ? proximas : pasadas;
 
+  // ── Payment ──
   function openPay(cita: SolicitudCliente) {
-    const svc = serviceFor(cita.id_servicio_nosql);
-    const precio = svc?.precio ?? 0;
+    const precio = serviceFor(cita.id_servicio_nosql)?.precio ?? 0;
     setPayModal({ cita, precio });
     setMonto(precio > 0 ? String(precio) : "");
     setMetodo("efectivo");
@@ -90,34 +126,51 @@ export default function CitasPage() {
   async function handlePay() {
     if (!payModal) return;
     const amount = parseFloat(monto);
-    if (!monto || isNaN(amount) || amount <= 0) {
-      setPayError("Ingresa un monto válido.");
-      return;
-    }
-    setPaying(true);
-    setPayError(null);
+    if (!monto || isNaN(amount) || amount <= 0) { setPayError("Ingresa un monto válido."); return; }
+    setPaying(true); setPayError(null);
     try {
       const pago = await paymentsService.create({
-        id_cita:     payModal.cita.id,
-        monto:       amount,
-        metodo_pago: metodo,
-        estado_pago: "COMPLETADO",
+        id_cita: payModal.cita.id, monto: amount, metodo_pago: metodo, estado_pago: "COMPLETADO",
       });
-      // Update local state so button disappears immediately
-      setCitas((prev) =>
-        prev.map((c) =>
-          c.id === payModal.cita.id
-            ? { ...c, pagos: [...c.pagos, { id: pago.id, monto: pago.monto, metodo_pago: pago.metodo_pago, estado_pago: "COMPLETADO" }] }
-            : c,
-        ),
-      );
+      setCitas((prev) => prev.map((c) =>
+        c.id === payModal.cita.id
+          ? { ...c, pagos: [...c.pagos, { id: pago.id, monto: pago.monto, metodo_pago: pago.metodo_pago, estado_pago: "COMPLETADO" }] }
+          : c,
+      ));
       setPayModal(null);
     } catch (err: any) {
       const msg = err?.response?.data?.message;
-      setPayError(typeof msg === "string" ? msg : "No se pudo registrar el pago. Intenta de nuevo.");
-    } finally {
-      setPaying(false);
-    }
+      setPayError(typeof msg === "string" ? msg : "No se pudo registrar el pago.");
+    } finally { setPaying(false); }
+  }
+
+  // ── Review ──
+  function openReview(cita: SolicitudCliente) {
+    setRevModal({ cita });
+    setRating(5);
+    setComentario("");
+    setRevError(null);
+  }
+
+  async function handleReview() {
+    if (!revModal || !user) return;
+    if (rating < 1) { setRevError("Selecciona una calificación."); return; }
+    setReviewing(true); setRevError(null);
+    try {
+      const rev = await reviewsService.create({
+        negocio_id:    revModal.cita.id_negocio,
+        usuario_id:    user.id,
+        nombre_cliente:`${user.nombre}`,
+        rating,
+        comentario,
+        fecha:         new Date().toISOString(),
+      });
+      setReviews((prev) => [...prev, rev]);
+      setRevModal(null);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message;
+      setRevError(typeof msg === "string" ? msg : "No se pudo enviar la reseña.");
+    } finally { setReviewing(false); }
   }
 
   return (
@@ -180,16 +233,16 @@ export default function CitasPage() {
       ) : (
         <div className="space-y-3">
           {displayed.map((cita) => {
-            const cfg    = ESTADO_CONFIG[cita.estado];
-            const Icon   = cfg.icon;
-            const paid   = isPaid(cita);
-            const svc    = serviceFor(cita.id_servicio_nosql);
+            const cfg       = ESTADO_CONFIG[cita.estado];
+            const Icon      = cfg.icon;
+            const paid      = isPaid(cita);
+            const svc       = serviceFor(cita.id_servicio_nosql);
+            const myReview  = reviewFor(cita.id_negocio);
+            const isPast    = !isUpcoming(cita.fecha_hora_propuesta);
+            const canReview = isPast && cita.estado === "CONFIRMADA" && !myReview;
 
             return (
-              <div
-                key={cita.id}
-                className="bg-white rounded-2xl border border-slate-200 p-5 flex items-center gap-4"
-              >
+              <div key={cita.id} className="bg-white rounded-2xl border border-slate-200 p-5 flex items-center gap-4">
                 {/* Date block */}
                 <div className="text-center min-w-[52px] flex-shrink-0">
                   <p className="text-2xl font-bold text-indigo-600 leading-none">
@@ -227,7 +280,8 @@ export default function CitasPage() {
                     {cfg.label}
                   </span>
 
-                  {cita.estado === "CONFIRMADA" && !paid && (
+                  {/* Pay button — solo en citas futuras/confirmadas sin pago */}
+                  {cita.estado === "CONFIRMADA" && !isPast && !paid && (
                     <button
                       onClick={() => openPay(cita)}
                       className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
@@ -244,6 +298,23 @@ export default function CitasPage() {
                     </span>
                   )}
 
+                  {/* Review button — solo en pasadas confirmadas */}
+                  {canReview && (
+                    <button
+                      onClick={() => openReview(cita)}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Star className="w-3 h-3" />
+                      Reseñar
+                    </button>
+                  )}
+
+                  {myReview && isPast && (
+                    <span className="inline-flex items-center gap-1 text-xs text-amber-600">
+                      {"★".repeat(myReview.rating)} Tu reseña
+                    </span>
+                  )}
+
                   <Link
                     href={`/portal/negocio/${cita.id_negocio}`}
                     className="inline-flex items-center gap-0.5 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
@@ -257,11 +328,10 @@ export default function CitasPage() {
         </div>
       )}
 
-      {/* Payment modal */}
+      {/* ── Payment modal ── */}
       {payModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-5">
-            {/* Header */}
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-slate-900">Registrar pago</h2>
               <button onClick={() => setPayModal(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
@@ -269,7 +339,6 @@ export default function CitasPage() {
               </button>
             </div>
 
-            {/* Cita summary */}
             <div className="bg-slate-50 rounded-xl p-3 space-y-1">
               <p className="text-sm font-semibold text-slate-800">{payModal.cita.negocio.nombre}</p>
               <p className="text-xs text-slate-500">
@@ -279,7 +348,6 @@ export default function CitasPage() {
               </p>
             </div>
 
-            {/* Método de pago */}
             <div className="space-y-2">
               <label className="text-xs font-medium text-slate-600">Método de pago</label>
               <div className="grid grid-cols-3 gap-2">
@@ -300,16 +368,12 @@ export default function CitasPage() {
               </div>
             </div>
 
-            {/* Monto */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-slate-600">Monto a pagar</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={monto}
+                  type="number" min="0" step="0.01" value={monto}
                   onChange={(e) => setMonto(e.target.value)}
                   placeholder="0.00"
                   className="w-full pl-7 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -323,12 +387,9 @@ export default function CitasPage() {
             </div>
 
             {payError && (
-              <div className="rounded-xl bg-rose-50 border border-rose-200 p-2.5 text-xs text-rose-700">
-                {payError}
-              </div>
+              <div className="rounded-xl bg-rose-50 border border-rose-200 p-2.5 text-xs text-rose-700">{payError}</div>
             )}
 
-            {/* Actions */}
             <div className="flex gap-3">
               <button
                 onClick={() => setPayModal(null)}
@@ -337,11 +398,70 @@ export default function CitasPage() {
                 Cancelar
               </button>
               <button
-                onClick={handlePay}
-                disabled={paying}
+                onClick={handlePay} disabled={paying}
                 className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer"
               >
                 {paying ? "Guardando..." : "Confirmar pago"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Review modal ── */}
+      {revModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-slate-900">Dejar reseña</h2>
+              <button onClick={() => setRevModal(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="bg-slate-50 rounded-xl p-3 space-y-1">
+              <p className="text-sm font-semibold text-slate-800">{revModal.cita.negocio.nombre}</p>
+              <p className="text-xs text-slate-500">
+                {serviceFor(revModal.cita.id_servicio_nosql)?.nombre ?? "Servicio"} ·{" "}
+                {new Date(revModal.cita.fecha_hora_propuesta).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-slate-600">Calificación</label>
+              <StarPicker value={rating} onChange={setRating} />
+              <p className="text-xs text-slate-400">
+                {["", "Muy malo", "Malo", "Regular", "Bueno", "Excelente"][rating]}
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-600">Comentario (opcional)</label>
+              <textarea
+                rows={3}
+                value={comentario}
+                onChange={(e) => setComentario(e.target.value)}
+                placeholder="Cuéntanos tu experiencia..."
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none placeholder:text-slate-400"
+              />
+            </div>
+
+            {revError && (
+              <div className="rounded-xl bg-rose-50 border border-rose-200 p-2.5 text-xs text-rose-700">{revError}</div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRevModal(null)}
+                className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleReview} disabled={reviewing || rating === 0}
+                className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer"
+              >
+                {reviewing ? "Enviando..." : "Publicar reseña"}
               </button>
             </div>
           </div>
