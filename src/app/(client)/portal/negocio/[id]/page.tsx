@@ -1,16 +1,68 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Star, MapPin, Phone, Clock, ChevronLeft, CheckCircle } from "lucide-react";
-import { getBusinessById } from "@/lib/mock-businesses";
+import { MapPin, Phone, ChevronLeft, CheckCircle } from "lucide-react";
+import { businessService } from "@/services/business.service";
+import { servicesService } from "@/services/services.service";
+import type { Business } from "@/types/business.types";
+import type { Service } from "@/types/service.types";
 
-export default async function BusinessDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const biz = getBusinessById(id);
-  if (!biz) notFound();
+const GRADIENTS = [
+  "from-indigo-500 to-violet-600",
+  "from-pink-500 to-rose-600",
+  "from-emerald-500 to-teal-600",
+  "from-amber-500 to-orange-600",
+  "from-cyan-500 to-blue-600",
+  "from-violet-500 to-purple-600",
+];
+const gradientFor = (id: number) => GRADIENTS[id % GRADIENTS.length];
+
+export default function BusinessDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const numericId = parseInt(id, 10);
+
+  const [biz, setBiz] = useState<Business | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [notFoundError, setNotFoundError] = useState(false);
+
+  useEffect(() => {
+    if (isNaN(numericId)) { setNotFoundError(true); return; }
+
+    Promise.all([
+      businessService.getById(numericId),
+      servicesService.getByBusiness(numericId),
+    ])
+      .then(([bizData, svcData]) => {
+        setBiz(bizData);
+        setServices(svcData);
+      })
+      .catch(() => setNotFoundError(true))
+      .finally(() => setLoading(false));
+  }, [numericId]);
+
+  if (notFoundError) notFound();
+
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-6 animate-pulse">
+        <div className="h-4 w-32 bg-slate-200 rounded" />
+        <div className="h-40 md:h-52 bg-slate-200 rounded-3xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="h-48 bg-slate-100 rounded-2xl" />
+            <div className="h-64 bg-slate-100 rounded-2xl" />
+          </div>
+          <div className="h-80 bg-slate-100 rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!biz) return null;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -20,85 +72,74 @@ export default async function BusinessDetailPage({
         Volver a explorar
       </Link>
 
-      {/* Banner del negocio */}
-      <div className={`relative rounded-3xl overflow-hidden bg-gradient-to-br ${biz.gradient} h-40 md:h-52 flex items-end p-6`}>
+      {/* Banner */}
+      <div className={`relative rounded-3xl overflow-hidden bg-gradient-to-br ${gradientFor(biz.id)} h-40 md:h-52 flex items-end p-6`}>
         <div className="absolute inset-0 bg-black/20" />
         <div className="relative flex items-end gap-4">
           <div className="w-16 h-16 md:w-20 md:h-20 bg-white rounded-2xl shadow-xl flex items-center justify-center text-3xl font-bold text-slate-700 flex-shrink-0">
-            {biz.name.charAt(0)}
+            {biz.nombre.charAt(0)}
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white">{biz.name}</h1>
-            <p className="text-white/80 text-sm">{biz.category} · {biz.city}</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-white">{biz.nombre}</h1>
+            <p className="text-white/80 text-sm">{biz.direccion}</p>
           </div>
         </div>
-        {biz.openNow
-          ? <span className="absolute top-4 right-4 text-xs font-semibold bg-emerald-500 text-white px-3 py-1 rounded-full">Abierto ahora</span>
-          : <span className="absolute top-4 right-4 text-xs font-semibold bg-slate-700/70 text-white px-3 py-1 rounded-full">Cerrado</span>
-        }
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Columna izquierda — info + servicios */}
+        {/* Columna izquierda */}
         <div className="lg:col-span-2 space-y-5">
           {/* Info general */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <h2 className="text-base font-semibold text-slate-900 mb-3">Sobre el negocio</h2>
-            <p className="text-sm text-slate-600 leading-relaxed mb-4">{biz.description}</p>
+            <p className="text-sm text-slate-600 leading-relaxed mb-4">{biz.descripcion}</p>
 
             <div className="grid grid-cols-2 gap-3 text-sm">
-              {[
-                { icon: MapPin, label: biz.address + ", " + biz.city },
-                { icon: Phone, label: biz.phone },
-                { icon: Clock, label: biz.hours },
-                { icon: Star, label: `${biz.rating} (${biz.reviewCount} reseñas)` },
-              ].map(({ icon: Icon, label }) => (
-                <div key={label} className="flex items-start gap-2 text-slate-600">
-                  <Icon className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
-                  <span className="text-xs">{label}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex gap-2 mt-4 flex-wrap">
-              {biz.tags.map((tag) => (
-                <span key={tag} className="text-xs bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full">{tag}</span>
-              ))}
+              <div className="flex items-start gap-2 text-slate-600">
+                <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                <span className="text-xs">{biz.direccion}</span>
+              </div>
+              <div className="flex items-start gap-2 text-slate-600">
+                <Phone className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                <span className="text-xs">{biz.telefono}</span>
+              </div>
             </div>
           </div>
 
           {/* Servicios */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <h2 className="text-base font-semibold text-slate-900 mb-4">Servicios disponibles</h2>
-            <div className="space-y-3">
-              {biz.services.map((svc) => (
-                <div
-                  key={svc.id}
-                  className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all group"
-                >
-                  <div className="flex-1 min-w-0 pr-4">
-                    <p className="text-sm font-semibold text-slate-900">{svc.name}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">{svc.description}</p>
-                    <p className="text-xs text-slate-400 mt-1">{svc.duration} min</p>
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <div className="text-right">
-                      <p className="text-base font-bold text-slate-900">
-                        {svc.price === 0 ? "Gratis" : `$${svc.price.toLocaleString()}`}
-                      </p>
+            {services.length === 0 ? (
+              <p className="text-sm text-slate-400">Este negocio aun no tiene servicios registrados.</p>
+            ) : (
+              <div className="space-y-3">
+                {services.map((svc) => (
+                  <div
+                    key={svc._id}
+                    className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all group"
+                  >
+                    <div className="flex-1 min-w-0 pr-4">
+                      <p className="text-sm font-semibold text-slate-900">{svc.nombre}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{svc.descripcion}</p>
+                      <p className="text-xs text-slate-400 mt-1">{svc.duracionMinutos} min</p>
                     </div>
-                    <button className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer opacity-0 group-hover:opacity-100">
-                      Agendar
-                    </button>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <p className="text-base font-bold text-slate-900">
+                        {svc.precio === 0 ? "Gratis" : `$${svc.precio.toLocaleString()}`}
+                      </p>
+                      <button className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer opacity-0 group-hover:opacity-100">
+                        Agendar
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Columna derecha — panel de reserva */}
-        <div className="space-y-4">
+        <div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5 sticky top-20">
             <h2 className="text-base font-semibold text-slate-900 mb-4">Agendar cita</h2>
 
@@ -106,9 +147,14 @@ export default async function BusinessDetailPage({
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-slate-600">Servicio</label>
                 <select className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
-                  {biz.services.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name} — {s.price === 0 ? "Gratis" : `$${s.price}`}</option>
-                  ))}
+                  {services.length === 0
+                    ? <option disabled>Sin servicios disponibles</option>
+                    : services.map((s) => (
+                        <option key={s._id} value={s._id}>
+                          {s.nombre} — {s.precio === 0 ? "Gratis" : `$${s.precio}`}
+                        </option>
+                      ))
+                  }
                 </select>
               </div>
 
@@ -143,7 +189,10 @@ export default async function BusinessDetailPage({
                 />
               </div>
 
-              <button className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer">
+              <button
+                disabled={services.length === 0}
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
+              >
                 Confirmar reserva
               </button>
             </div>
@@ -151,24 +200,6 @@ export default async function BusinessDetailPage({
             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
               <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
               Reserva gratuita, cancela cuando quieras
-            </div>
-          </div>
-
-          {/* Calificacion rapida */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-4">
-            <div className="flex items-center gap-3">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-slate-900">{biz.rating}</p>
-                <div className="flex gap-0.5 mt-1">
-                  {[1,2,3,4,5].map((s) => (
-                    <Star key={s} className={`w-3.5 h-3.5 ${s <= Math.round(biz.rating) ? "fill-amber-400 text-amber-400" : "text-slate-200 fill-slate-200"}`} />
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-900">{biz.reviewCount} reseñas</p>
-                <p className="text-xs text-slate-500">Verificadas por Aionios</p>
-              </div>
             </div>
           </div>
         </div>

@@ -7,12 +7,11 @@ import AioniosLogo from "@/components/ui/AioniosLogo";
 import ErrorBanner from "@/components/ui/ErrorBanner";
 import PasswordInput from "@/components/ui/PasswordInput";
 import SubmitButton from "@/components/ui/SubmitButton";
+import { authService } from "@/services/auth.service";
 
 type Role = "business" | "client";
 type FormState = { error: string } | null;
 
-// Defined at module level → stable reference, no stale closure.
-// Role is read from the hidden form field, not from component state.
 async function loginAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
@@ -20,15 +19,15 @@ async function loginAction(_prev: FormState, formData: FormData): Promise<FormSt
 
   if (!email || !password) return { error: "Por favor completa todos los campos." };
 
-  await new Promise((r) => setTimeout(r, 1200));
-  window.location.href = role === "business" ? "/dashboard" : "/portal";
-  return null;
+  try {
+    await authService.login({ email, password });
+    window.location.href = role === "business" ? "/dashboard" : "/portal";
+    return null;
+  } catch {
+    return { error: "Correo o contraseña incorrectos. Intenta de nuevo." };
+  }
 }
 
-const demoNote: Record<Role, string> = {
-  business: "Ingresa cualquier correo y contrasena para acceder al panel de negocio.",
-  client:   "Ingresa cualquier correo y contrasena para explorar el portal de cliente.",
-};
 
 export default function LoginPage() {
   const [role, setRole] = useState<Role>("business");
@@ -121,15 +120,6 @@ export default function LoginPage() {
                 </button>
               );
             })}
-          </div>
-
-          <div className={`rounded-xl border p-3 mb-5 text-xs ${
-            role === "business"
-              ? "bg-indigo-50 border-indigo-100 text-indigo-700"
-              : "bg-violet-50 border-violet-100 text-violet-700"
-          }`}>
-            <span className="font-semibold">Modo demo — </span>
-            {demoNote[role]}
           </div>
 
           {state?.error && <div className="mb-4"><ErrorBanner message={state.error} /></div>}

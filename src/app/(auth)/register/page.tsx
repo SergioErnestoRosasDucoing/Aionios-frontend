@@ -7,24 +7,34 @@ import AioniosLogo from "@/components/ui/AioniosLogo";
 import ErrorBanner from "@/components/ui/ErrorBanner";
 import PasswordInput from "@/components/ui/PasswordInput";
 import SubmitButton from "@/components/ui/SubmitButton";
+import { authService } from "@/services/auth.service";
 
 type Role = "business" | "client";
 type FormState = { error: string } | null;
 
-// Module-level stable action — reads role from hidden form field.
+// id_rol: 2 = administrador de negocio, 3 = cliente — ajustar si los IDs del backend difieren
+const ROLE_ID: Record<Role, number> = { business: 2, client: 3 };
+
 async function registerAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const name     = formData.get("name") as string;
+  const nombre   = formData.get("nombre") as string;
+  const apellido = formData.get("apellido") as string;
   const email    = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const telefono = formData.get("telefono") as string;
+  const id_rol   = Number(formData.get("id_rol"));
   const role     = (formData.get("role") as Role) ?? "business";
 
-  if (!name || !email || !password) return { error: "Por favor completa todos los campos." };
-  if (role === "business" && !formData.get("business")) return { error: "Ingresa el nombre de tu negocio." };
-  if (password.length < 8) return { error: "La contrasena debe tener al menos 8 caracteres." };
+  if (!nombre || !apellido || !email || !password || !telefono) {
+    return { error: "Por favor completa todos los campos." };
+  }
 
-  await new Promise((r) => setTimeout(r, 1400));
-  window.location.href = role === "business" ? "/dashboard" : "/portal";
-  return null;
+  try {
+    await authService.register({ nombre, apellido, email, password, telefono, id_rol });
+    window.location.href = role === "business" ? "/dashboard" : "/portal";
+    return null;
+  } catch {
+    return { error: "No se pudo crear la cuenta. El correo ya puede estar registrado." };
+  }
 }
 
 const FEATURES: Record<Role, string[]> = {
@@ -41,12 +51,6 @@ const FEATURES: Record<Role, string[]> = {
     "Valora y comenta tu experiencia",
   ],
 };
-
-const RUBROS = [
-  "Salon de belleza", "Barberia", "Spa y masajes", "Construccion y remodelacion",
-  "Tintoreria y lavanderia", "Clinica y salud", "Educacion y tutores",
-  "Hogar y mantenimiento", "Tecnologia y reparacion", "Fotografia", "Otro",
-];
 
 export default function RegisterPage() {
   const [role, setRole] = useState<Role>("business");
@@ -125,7 +129,9 @@ export default function RegisterPage() {
             {(["business", "client"] as const).map((r) => {
               const Icon = r === "business" ? Building2 : User;
               const active = role === r;
-              const scheme = r === "business" ? { border: "border-indigo-600", bg: "bg-indigo-50", icon: "bg-indigo-600 text-white", label: "text-indigo-700" } : { border: "border-violet-600", bg: "bg-violet-50", icon: "bg-violet-600 text-white", label: "text-violet-700" };
+              const scheme = r === "business"
+                ? { border: "border-indigo-600", bg: "bg-indigo-50", icon: "bg-indigo-600 text-white", label: "text-indigo-700" }
+                : { border: "border-violet-600", bg: "bg-violet-50", icon: "bg-violet-600 text-white", label: "text-violet-700" };
               return (
                 <button
                   key={r}
@@ -155,29 +161,26 @@ export default function RegisterPage() {
 
           <form action={action} className="space-y-4">
             <input type="hidden" name="role" value={role} />
+            <input type="hidden" name="id_rol" value={ROLE_ID[role]} />
 
-            <div className="space-y-1.5">
-              <label htmlFor="name" className="block text-sm font-medium text-slate-700">Nombre completo</label>
-              <input id="name" name="name" type="text" placeholder="Juan Garcia"
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm" />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label htmlFor="nombre" className="block text-sm font-medium text-slate-700">Nombre</label>
+                <input id="nombre" name="nombre" type="text" placeholder="Juan"
+                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm" />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="apellido" className="block text-sm font-medium text-slate-700">Apellido</label>
+                <input id="apellido" name="apellido" type="text" placeholder="Garcia"
+                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm" />
+              </div>
             </div>
 
-            {role === "business" && (
-              <>
-                <div className="space-y-1.5">
-                  <label htmlFor="business" className="block text-sm font-medium text-slate-700">Nombre del negocio</label>
-                  <input id="business" name="business" type="text" placeholder="Mi Negocio SA"
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm" />
-                </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="rubro" className="block text-sm font-medium text-slate-700">Rubro</label>
-                  <select id="rubro" name="rubro"
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm cursor-pointer">
-                    {RUBROS.map((r) => <option key={r}>{r}</option>)}
-                  </select>
-                </div>
-              </>
-            )}
+            <div className="space-y-1.5">
+              <label htmlFor="telefono" className="block text-sm font-medium text-slate-700">Telefono</label>
+              <input id="telefono" name="telefono" type="tel" placeholder="1234567890"
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm" />
+            </div>
 
             <div className="space-y-1.5">
               <label htmlFor="email" className="block text-sm font-medium text-slate-700">Correo electronico</label>
