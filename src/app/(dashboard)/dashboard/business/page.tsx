@@ -11,7 +11,7 @@ export default function BusinessPage() {
   const { business, loading, error, setBusiness } = useMyBusiness();
 
   const [form, setForm] = useState({
-    nombre: "", descripcion: "", direccion: "", telefono: "", slug: "",
+    nombre: "", descripcion: "", direccion: "", telefono_comercial: "", slug: "",
   });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -20,18 +20,18 @@ export default function BusinessPage() {
   // Crear negocio
   const [creating, setCreating] = useState(false);
   const [createForm, setCreateForm] = useState({
-    nombre: "", descripcion: "", direccion: "", telefono: "", slug: "",
+    nombre: "", descripcion: "", direccion: "", telefono_comercial: "", slug: "",
   });
   const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
     if (business) {
       setForm({
-        nombre:      business.nombre,
-        descripcion: business.descripcion,
-        direccion:   business.direccion,
-        telefono:    business.telefono,
-        slug:        business.slug,
+        nombre:             business.nombre,
+        descripcion:        business.descripcion,
+        direccion:          business.direccion ?? "",
+        telefono_comercial: business.telefono_comercial ?? "",
+        slug:               business.slug,
       });
     }
   }, [business]);
@@ -57,16 +57,16 @@ export default function BusinessPage() {
 
   const handleCreate = async () => {
     if (!user) return;
-    const { nombre, descripcion, direccion, telefono, slug } = createForm;
-    if (!nombre || !descripcion || !direccion || !telefono || !slug) {
+    const { nombre, descripcion, direccion, telefono_comercial, slug } = createForm;
+    if (!nombre || !descripcion || !direccion || !telefono_comercial || !slug) {
       setCreateError("Por favor completa todos los campos.");
       return;
     }
     setCreating(true); setCreateError(null);
     try {
       const newBiz = await businessService.create({
-        nombre, descripcion, direccion, telefono, slug,
-        dueno: { connect: { id: user.id } },
+        nombre, descripcion, direccion, telefono_comercial, slug,
+        id_dueno: user.id,
       });
       setBusiness(newBiz);
     } catch {
@@ -116,7 +116,7 @@ export default function BusinessPage() {
             {[
               { field: "nombre",      label: "Nombre del negocio", placeholder: "Mi Negocio SA"        },
               { field: "slug",        label: "Slug (URL)",          placeholder: "mi-negocio"           },
-              { field: "telefono",    label: "Telefono",            placeholder: "4771234567"           },
+              { field: "telefono_comercial", label: "Telefono", placeholder: "4771234567" },
               { field: "direccion",   label: "Direccion",           placeholder: "Calle 123, Ciudad"    },
             ].map(({ field, label, placeholder }) => (
               <div key={field} className="space-y-1.5">
@@ -205,7 +205,7 @@ export default function BusinessPage() {
             <label className="block text-sm font-medium text-slate-700">
               <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> Telefono</span>
             </label>
-            <input value={form.telefono} onChange={handleChange("telefono")} type="tel"
+            <input value={form.telefono_comercial} onChange={handleChange("telefono_comercial")} type="tel"
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
           </div>
 
@@ -236,7 +236,7 @@ export default function BusinessPage() {
         <div className="flex gap-3">
           <button
             onClick={() => {
-              setForm({ nombre: business.nombre, descripcion: business.descripcion, direccion: business.direccion, telefono: business.telefono, slug: business.slug });
+              setForm({ nombre: business.nombre, descripcion: business.descripcion, direccion: business.direccion ?? "", telefono_comercial: business.telefono_comercial ?? "", slug: business.slug });
               setSaveError(null);
             }}
             className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"

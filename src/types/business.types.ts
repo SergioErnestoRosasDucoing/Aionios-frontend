@@ -3,35 +3,25 @@ export interface Business {
   nombre: string;
   descripcion: string;
   direccion: string;
-  telefono: string;
+  telefono_comercial: string | null;
   slug: string;
-  dueno_id: number;
-  dueno?: {
-    id: number;
-    nombre: string;
-    apellido: string;
-    email: string;
-  };
+  id_dueno: number;
 }
 
 export interface CreateBusinessPayload {
   nombre: string;
   descripcion: string;
   direccion: string;
-  telefono: string;
+  telefono_comercial: string;
   slug: string;
-  dueno: {
-    connect: {
-      id: number;
-    };
-  };
+  id_dueno: number;
 }
 
 export interface UpdateBusinessPayload {
   nombre?: string;
   descripcion?: string;
   direccion?: string;
-  telefono?: string;
+  telefono_comercial?: string;
   slug?: string;
 }
 

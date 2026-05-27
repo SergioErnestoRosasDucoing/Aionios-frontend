@@ -166,7 +166,7 @@ export default function ExplorarPage() {
                     </span>
                     <span className="flex items-center gap-1">
                       <Phone className="w-3 h-3 flex-shrink-0" />
-                      {biz.telefono}
+                      {biz.telefono_comercial}
                     </span>
                   </div>
                 </div>

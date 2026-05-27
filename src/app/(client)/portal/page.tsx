@@ -201,7 +201,7 @@ export default function PortalHome() {
                     <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{biz.descripcion}</p>
                     <div className="flex items-center gap-1 mt-1 text-slate-400">
                       <Phone className="w-3 h-3" />
-                      <span className="text-xs">{biz.telefono}</span>
+                      <span className="text-xs">{biz.telefono_comercial}</span>
                     </div>
                   </div>
                   <ChevronRight className="w-4 h-4 text-slate-300 flex-shrink-0" />

@@ -101,7 +101,7 @@ export default function BusinessDetailPage() {
               </div>
               <div className="flex items-start gap-2 text-slate-600">
                 <Phone className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
-                <span className="text-xs">{biz.telefono}</span>
+                <span className="text-xs">{biz.telefono_comercial}</span>
               </div>
             </div>
           </div>

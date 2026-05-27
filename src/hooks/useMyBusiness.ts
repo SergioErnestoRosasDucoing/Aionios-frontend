@@ -16,7 +16,7 @@ export function useMyBusiness() {
     businessService
       .getAll()
       .then((all) => {
-        setBusiness(all.find((b) => b.dueno_id === user.id) ?? null);
+        setBusiness(all.find((b) => b.id_dueno === user.id) ?? null);
       })
       .catch(() => setError("No se pudo cargar el negocio"))
       .finally(() => setLoading(false));
