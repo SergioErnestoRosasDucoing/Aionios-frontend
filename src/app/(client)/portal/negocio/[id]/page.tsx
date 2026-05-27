@@ -125,6 +125,10 @@ export default function BusinessDetailPage() {
       setBookingError("Selecciona un servicio, fecha y hora.");
       return;
     }
+    if (selectedDate < todayStr()) {
+      setBookingError("No puedes agendar en una fecha pasada.");
+      return;
+    }
     setBooking(true);
     setBookingError(null);
     try {

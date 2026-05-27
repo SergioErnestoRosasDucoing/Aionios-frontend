@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Search, MapPin, Phone, SlidersHorizontal } from "lucide-react";
 import { businessService } from "@/services/business.service";
@@ -19,7 +20,6 @@ const GRADIENTS = [
 ];
 const gradientFor = (id: number) => GRADIENTS[id % GRADIENTS.length];
 
-// Keyword matching por categoría (la API no devuelve campo categoría)
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   belleza:      ["belleza", "salon", "spa", "estetica", "cosmet", "cabello", "peluquer", "uñas", "manicure", "pedicure"],
   construccion: ["construc", "remodelacion", "plomeria", "electricid", "pintura", "albañil"],
@@ -32,11 +32,13 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
 };
 
 export default function ExplorarPage() {
-  const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+
+  const [businesses, setBusinesses]           = useState<Business[]>([]);
+  const [loading, setLoading]                 = useState(true);
+  const [error, setError]                     = useState<string | null>(null);
+  const [search, setSearch]                   = useState(searchParams.get("q") ?? "");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(searchParams.get("categoria"));
 
   useEffect(() => {
     businessService
@@ -47,14 +49,11 @@ export default function ExplorarPage() {
   }, []);
 
   const filtered = businesses.filter((b) => {
-    const text = `${b.nombre} ${b.descripcion}`.toLowerCase();
-
-    const matchesSearch = !search || text.includes(search.toLowerCase());
-
+    const text = `${b.nombre} ${b.descripcion ?? ""}`.toLowerCase();
+    const matchesSearch   = !search || text.includes(search.toLowerCase());
     const matchesCategory =
       !selectedCategory ||
       (CATEGORY_KEYWORDS[selectedCategory]?.some((kw) => text.includes(kw)) ?? false);
-
     return matchesSearch && matchesCategory;
   });
 
@@ -63,11 +62,11 @@ export default function ExplorarPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Explorar negocios</h1>
         <p className="text-slate-500 text-sm mt-0.5">
-          {loading ? "Cargando..." : `${filtered.length} negocios disponibles`}
+          {loading ? "Cargando..." : `${filtered.length} negocio${filtered.length !== 1 ? "s" : ""} disponible${filtered.length !== 1 ? "s" : ""}`}
         </p>
       </div>
 
-      {/* Barra de filtros */}
+      {/* Barra de búsqueda */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2.5">
           <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
@@ -78,10 +77,21 @@ export default function ExplorarPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none w-full"
           />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+            >
+              ✕
+            </button>
+          )}
         </div>
-        <button className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50 cursor-pointer font-medium">
+        <button
+          onClick={() => { setSearch(""); setSelectedCategory(null); }}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50 cursor-pointer font-medium"
+        >
           <SlidersHorizontal className="w-4 h-4" />
-          Filtros
+          Limpiar filtros
         </button>
       </div>
 

@@ -98,12 +98,11 @@ export default function CitasPage() {
 
   useEffect(() => {
     Promise.all([
-      requestsService.getMine(),
-      servicesService.getAll(),
-      reviewsService.getMine(),
+      requestsService.getMine().catch(() => [] as SolicitudCliente[]),
+      servicesService.getAll().catch(() => [] as Service[]),
+      reviewsService.getMine().catch(() => [] as Review[]),
     ])
       .then(([reqs, svcs, revs]) => { setCitas(reqs); setServices(svcs); setReviews(revs); })
-      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 

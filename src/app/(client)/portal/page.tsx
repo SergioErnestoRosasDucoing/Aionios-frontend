@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Search, MapPin, Phone, ChevronRight, TrendingUp } from "lucide-react";
 import { businessService } from "@/services/business.service";
@@ -63,8 +64,10 @@ function RecentSkeleton() {
 }
 
 export default function PortalHome() {
+  const router = useRouter();
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]       = useState(true);
+  const [heroSearch, setHeroSearch] = useState("");
 
   useEffect(() => {
     businessService
@@ -73,6 +76,11 @@ export default function PortalHome() {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  function handleHeroSearch() {
+    const q = heroSearch.trim();
+    router.push(q ? `/portal/explorar?q=${encodeURIComponent(q)}` : "/portal/explorar");
+  }
 
   const featured = businesses.slice(0, 4);
   const recent   = businesses.slice(4);
@@ -99,11 +107,17 @@ export default function PortalHome() {
               <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
               <input
                 type="text"
+                value={heroSearch}
+                onChange={(e) => setHeroSearch(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleHeroSearch()}
                 placeholder="Barberia, electricista, fisioterapia..."
                 className="bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none w-full py-1.5"
               />
             </div>
-            <button className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer flex-shrink-0">
+            <button
+              onClick={handleHeroSearch}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer flex-shrink-0"
+            >
               Buscar
             </button>
           </div>
