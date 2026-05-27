@@ -19,11 +19,24 @@ const GRADIENTS = [
 ];
 const gradientFor = (id: number) => GRADIENTS[id % GRADIENTS.length];
 
+// Keyword matching por categoría (la API no devuelve campo categoría)
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  belleza:      ["belleza", "salon", "spa", "estetica", "cosmet", "cabello", "peluquer", "uñas", "manicure", "pedicure"],
+  construccion: ["construc", "remodelacion", "plomeria", "electricid", "pintura", "albañil"],
+  tintoreria:   ["tintoreria", "lavanderia", "ropa", "limpieza en seco"],
+  salud:        ["salud", "fisioterapia", "medico", "clinica", "rehabilitacion", "optica", "dental", "nutricion"],
+  educacion:    ["educacion", "academia", "ingles", "idioma", "tutor", "clase", "curso"],
+  hogar:        ["hogar", "mantenimiento", "plomero", "electricista", "jardin", "mudanza"],
+  tecnologia:   ["tecnologia", "reparacion", "celular", "laptop", "computadora", "software"],
+  fotografia:   ["fotografi", "estudio", "foto", "video", "retrato"],
+};
+
 export default function ExplorarPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   useEffect(() => {
     businessService
@@ -33,10 +46,17 @@ export default function ExplorarPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = businesses.filter((b) =>
-    b.nombre.toLowerCase().includes(search.toLowerCase()) ||
-    b.descripcion.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = businesses.filter((b) => {
+    const text = `${b.nombre} ${b.descripcion}`.toLowerCase();
+
+    const matchesSearch = !search || text.includes(search.toLowerCase());
+
+    const matchesCategory =
+      !selectedCategory ||
+      (CATEGORY_KEYWORDS[selectedCategory]?.some((kw) => text.includes(kw)) ?? false);
+
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="space-y-6">
@@ -67,25 +87,37 @@ export default function ExplorarPage() {
 
       {/* Chips de categorias */}
       <div className="flex gap-2 flex-wrap">
-        <button className="px-3 py-1.5 bg-indigo-600 text-white rounded-xl text-xs font-medium cursor-pointer">
+        <button
+          onClick={() => setSelectedCategory(null)}
+          className={`px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer transition-colors ${
+            !selectedCategory
+              ? "bg-indigo-600 text-white"
+              : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-700"
+          }`}
+        >
           Todos
         </button>
         {CATEGORIES.map((cat) => (
           <button
             key={cat.slug}
-            className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-700 rounded-xl text-xs font-medium cursor-pointer transition-colors"
+            onClick={() => setSelectedCategory(cat.slug === selectedCategory ? null : cat.slug)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium cursor-pointer transition-colors ${
+              selectedCategory === cat.slug
+                ? "bg-indigo-600 text-white"
+                : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-700"
+            }`}
           >
             {cat.label}
           </button>
         ))}
       </div>
 
-      {/* Estado de error */}
+      {/* Error */}
       {error && (
         <div className="rounded-xl bg-rose-50 border border-rose-200 p-4 text-sm text-rose-700">{error}</div>
       )}
 
-      {/* Skeleton de carga */}
+      {/* Skeleton */}
       {loading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -101,12 +133,14 @@ export default function ExplorarPage() {
         </div>
       )}
 
-      {/* Grid de negocios */}
+      {/* Grid */}
       {!loading && !error && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.length === 0 ? (
             <p className="col-span-full text-center text-slate-400 py-16">
-              No se encontraron negocios.
+              {selectedCategory
+                ? "No se encontraron negocios en esta categoría."
+                : "No se encontraron negocios."}
             </p>
           ) : (
             filtered.map((biz) => (
@@ -115,19 +149,16 @@ export default function ExplorarPage() {
                 href={`/portal/negocio/${biz.id}`}
                 className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-md hover:border-slate-300 transition-all group"
               >
-                {/* Banner */}
                 <div className={`h-28 bg-gradient-to-br ${gradientFor(biz.id)} relative flex items-end p-4`}>
                   <div className="w-12 h-12 bg-white rounded-xl shadow-md flex items-center justify-center text-xl font-bold text-slate-700">
                     {biz.nombre.charAt(0)}
                   </div>
                 </div>
-
                 <div className="p-4">
                   <p className="text-sm font-bold text-slate-900 group-hover:text-indigo-700 transition-colors mb-1">
                     {biz.nombre}
                   </p>
                   <p className="text-xs text-slate-500 line-clamp-2 mb-3">{biz.descripcion}</p>
-
                   <div className="flex flex-col gap-1.5 text-xs text-slate-400">
                     <span className="flex items-center gap-1">
                       <MapPin className="w-3 h-3 flex-shrink-0" />
