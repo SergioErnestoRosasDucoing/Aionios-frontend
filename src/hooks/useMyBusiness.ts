@@ -14,10 +14,8 @@ export function useMyBusiness() {
   useEffect(() => {
     if (!user) return;
     businessService
-      .getAll()
-      .then((all) => {
-        setBusiness(all.find((b) => b.id_dueno === user.id) ?? null);
-      })
+      .getMine()
+      .then((biz) => setBusiness(biz))
       .catch(() => setError("No se pudo cargar el negocio"))
       .finally(() => setLoading(false));
   }, [user]);

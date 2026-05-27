@@ -13,6 +13,11 @@ export const businessService = {
     return data;
   },
 
+  async getMine(): Promise<Business | null> {
+    const { data } = await apiClient.get<Business | null>("/business/mine");
+    return data;
+  },
+
   async getById(id: number): Promise<Business> {
     const { data } = await apiClient.get<Business>(`/business/${id}`);
     return data;
