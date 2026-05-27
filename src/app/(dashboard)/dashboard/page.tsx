@@ -1,3 +1,5 @@
+"use client";
+
 import type { JSX } from "react";
 import {
   CalendarCheck,
@@ -10,6 +12,8 @@ import {
   XCircle,
   ArrowUpRight,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useMyBusiness } from "@/hooks/useMyBusiness";
 
 const kpis = [
   {
@@ -114,6 +118,9 @@ function ActivityIcon({ type }: { type: ActivityType }) {
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const { business } = useMyBusiness();
+
   const today = new Intl.DateTimeFormat("es-MX", {
     weekday: "long",
     year: "numeric",
@@ -121,12 +128,18 @@ export default function DashboardPage() {
     day: "numeric",
   }).format(new Date());
 
+  const greeting = business?.nombre
+    ? `Bienvenido, ${business.nombre}`
+    : user?.nombre
+    ? `Bienvenido, ${user.nombre}`
+    : "Panel principal";
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Encabezado */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Panel principal</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{greeting}</h1>
           <p className="text-slate-500 text-sm mt-0.5 capitalize">{today}</p>
         </div>
         <button className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer">
@@ -219,7 +232,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="text-base font-semibold text-slate-900">Citas de hoy</h2>
-            <p className="text-slate-500 text-sm">{appointments.length} citas programadas</p>
+            <p className="text-slate-500 text-sm">0 citas programadas</p>
           </div>
           <button className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-medium cursor-pointer">
             Ver agenda completa
@@ -227,25 +240,9 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        <div className="space-y-3">
-          {appointments.map((apt, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-colors"
-            >
-              <div className="flex items-center gap-4">
-                <div className="text-center w-14">
-                  <p className="text-sm font-bold text-slate-900">{apt.time}</p>
-                </div>
-                <div className="w-px h-8 bg-slate-200" />
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{apt.client}</p>
-                  <p className="text-xs text-slate-500">{apt.service}</p>
-                </div>
-              </div>
-              <StatusBadge status={apt.status} />
-            </div>
-          ))}
+        <div className="text-center py-10">
+          <CalendarCheck className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+          <p className="text-sm text-slate-500">No tienes citas programadas para hoy</p>
         </div>
       </div>
     </div>
