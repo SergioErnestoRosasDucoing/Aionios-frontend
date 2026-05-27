@@ -1,36 +1,82 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aionios — Frontend
 
-## Getting Started
+Frontend de la plataforma Aionios construido con Next.js 16 y React 19.
 
-First, run the development server:
+> La documentación completa de arquitectura, API y flujos está en el repositorio del backend:
+> **https://github.com/Aionios-team/Aionios-backend**
+
+---
+
+## Repositorios
+
+| Repositorio | URL |
+|---|---|
+| **Frontend** (este repo) | https://github.com/Aionios-team/Aionios-frontend |
+| **Backend** (NestJS + API) | https://github.com/Aionios-team/Aionios-backend |
+
+---
+
+## Instalación
+
+```bash
+npm install
+```
+
+## Variables de entorno
+
+Crear archivo `.env.local` en la raíz:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+## Desarrollo local
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+El backend debe estar corriendo en `http://localhost:3001` (ver instrucciones en su README).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Rutas de la aplicación
 
-## Learn More
+### Portal del cliente (`/portal`)
+| Ruta | Descripción |
+|---|---|
+| `/portal` | Home con buscador y negocios destacados |
+| `/portal/explorar` | Listado de negocios con búsqueda y filtros por categoría |
+| `/portal/negocio/:id` | Detalle del negocio + formulario de reserva |
+| `/portal/citas` | Mis citas: próximas, pasadas, pagar y reseñar |
+| `/portal/perfil` | Perfil editable del usuario |
 
-To learn more about Next.js, take a look at the following resources:
+### Dashboard del negocio (`/dashboard`)
+| Ruta | Descripción |
+|---|---|
+| `/dashboard` | Panel principal: KPIs, agenda del día, actividad reciente |
+| `/dashboard/business` | Datos del negocio |
+| `/dashboard/services` | Catálogo de servicios (crear, editar, eliminar) |
+| `/dashboard/requests` | Solicitudes: confirmar o cancelar citas |
+| `/dashboard/horarios` | Agenda semanal + bloqueos de horario |
+| `/dashboard/payments` | Ingresos, pagos recibidos y estadísticas |
+| `/dashboard/reviews` | Reseñas de clientes + respuestas del negocio |
+| `/dashboard/support` | Tickets de soporte |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Auth
+| Ruta | Descripción |
+|---|---|
+| `/login` | Inicio de sesión |
+| `/register` | Registro (seleccionar rol: cliente o negocio) |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Next.js 16** — App Router, `"use client"` para páginas interactivas
+- **React 19** — Componentes funcionales con hooks
+- **TypeScript 5** — Tipado estricto en servicios, tipos y componentes
+- **Tailwind CSS 4** — Estilos utilitarios
+- **Axios** — Cliente HTTP con interceptor JWT (`src/lib/axios.ts`)
+- **Lucide React** — Íconos

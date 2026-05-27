@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Search, MapPin, Phone, SlidersHorizontal } from "lucide-react";
@@ -31,7 +31,7 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   fotografia:   ["fotografi", "estudio", "foto", "video", "retrato"],
 };
 
-export default function ExplorarPage() {
+function ExplorarContent() {
   const searchParams = useSearchParams();
 
   const [businesses, setBusinesses]           = useState<Business[]>([]);
@@ -186,5 +186,13 @@ export default function ExplorarPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ExplorarPage() {
+  return (
+    <Suspense>
+      <ExplorarContent />
+    </Suspense>
   );
 }
