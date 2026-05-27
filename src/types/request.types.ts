@@ -25,6 +25,13 @@ export interface Solicitud {
   usuario: SolicitudUsuario;
 }
 
+export interface SolicitudPago {
+  id: number;
+  monto: string;
+  metodo_pago: string;
+  estado_pago: "PENDIENTE" | "COMPLETADO" | "FALLIDO" | "REEMBOLSADO";
+}
+
 export interface SolicitudCliente {
   id: number;
   id_usuario: number;
@@ -33,6 +40,7 @@ export interface SolicitudCliente {
   fecha_hora_propuesta: string;
   estado: EstadoSolicitud;
   negocio: SolicitudNegocio;
+  pagos: SolicitudPago[];
 }
 
 export interface CreateSolicitudPayload {
