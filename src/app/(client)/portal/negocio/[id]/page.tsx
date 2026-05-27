@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useState, useEffect, useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { MapPin, Phone, ChevronLeft, CheckCircle } from "lucide-react";
+import { MapPin, Phone, ChevronLeft, CheckCircle, CalendarDays, Clock } from "lucide-react";
 import { businessService } from "@/services/business.service";
 import { servicesService } from "@/services/services.service";
+import { horariosService } from "@/services/horarios.service";
+import { requestsService } from "@/services/requests.service";
+import { useAuth } from "@/context/AuthContext";
 import type { Business } from "@/types/business.types";
 import type { Service } from "@/types/service.types";
 
@@ -20,14 +23,57 @@ const GRADIENTS = [
 ];
 const gradientFor = (id: number) => GRADIENTS[id % GRADIENTS.length];
 
+const HOUR_START = 9;
+const HOUR_END   = 18;
+
+function generateSlots(duracionMinutos: number): string[] {
+  const slots: string[] = [];
+  const step = Math.max(duracionMinutos, 30);
+  for (let mins = HOUR_START * 60; mins + step <= HOUR_END * 60; mins += step) {
+    const h = Math.floor(mins / 60).toString().padStart(2, "0");
+    const m = (mins % 60).toString().padStart(2, "0");
+    slots.push(`${h}:${m}`);
+  }
+  return slots;
+}
+
+function isBlocked(slot: string, fecha: string, blocks: any[]): boolean {
+  return blocks.some((b) => {
+    if (!b.fecha || !b.hora_inicio || !b.hora_fin) return false;
+    const bDate = b.fecha.split("T")[0];
+    if (bDate !== fecha) return false;
+    return slot >= b.hora_inicio && slot < b.hora_fin;
+  });
+}
+
+function toIso(fecha: string, hora: string): string {
+  return new Date(`${fecha}T${hora}:00`).toISOString();
+}
+
+function todayStr(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
 export default function BusinessDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router   = useRouter();
   const numericId = parseInt(id, 10);
+  const { user } = useAuth();
 
-  const [biz, setBiz] = useState<Business | null>(null);
+  const [biz,      setBiz]      = useState<Business | null>(null);
   const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [blocks,   setBlocks]   = useState<any[]>([]);
+  const [loading,  setLoading]  = useState(true);
   const [notFoundError, setNotFoundError] = useState(false);
+
+  // Booking form state
+  const [selectedSvc,  setSelectedSvc]  = useState("");
+  const [selectedDate, setSelectedDate] = useState(todayStr());
+  const [selectedTime, setSelectedTime] = useState("");
+  const [nota,         setNota]         = useState("");
+  const [booking,      setBooking]      = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [booked,       setBooked]       = useState(false);
 
   useEffect(() => {
     if (isNaN(numericId)) { setNotFoundError(true); return; }
@@ -35,14 +81,67 @@ export default function BusinessDetailPage() {
     Promise.all([
       businessService.getById(numericId),
       servicesService.getByBusiness(numericId),
+      horariosService.getByNegocio(numericId).catch(() => null),
     ])
-      .then(([bizData, svcData]) => {
+      .then(([bizData, svcData, horario]) => {
         setBiz(bizData);
         setServices(svcData);
+        setBlocks(horario?.excepciones_y_festivos ?? []);
+        if (svcData.length > 0) setSelectedSvc(svcData[0]._id);
       })
       .catch(() => setNotFoundError(true))
       .finally(() => setLoading(false));
   }, [numericId]);
+
+  const currentSvc = useMemo(
+    () => services.find((s) => s._id === selectedSvc),
+    [services, selectedSvc],
+  );
+
+  const slots = useMemo(() => {
+    const all = generateSlots(currentSvc?.duracionMinutos ?? 60);
+    return all.map((slot) => ({
+      time: slot,
+      blocked: isBlocked(slot, selectedDate, blocks),
+    }));
+  }, [currentSvc, selectedDate, blocks]);
+
+  // Reset selected time if it becomes blocked or slots change
+  useEffect(() => {
+    const available = slots.filter((s) => !s.blocked);
+    if (selectedTime && slots.find((s) => s.time === selectedTime)?.blocked) {
+      setSelectedTime(available[0]?.time ?? "");
+    } else if (!selectedTime && available.length > 0) {
+      setSelectedTime(available[0].time);
+    }
+  }, [slots]);
+
+  const handleBook = async () => {
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    if (!selectedSvc || !selectedDate || !selectedTime) {
+      setBookingError("Selecciona un servicio, fecha y hora.");
+      return;
+    }
+    setBooking(true);
+    setBookingError(null);
+    try {
+      await requestsService.create({
+        id_usuario:           user.id,
+        id_negocio:           numericId,
+        id_servicio_nosql:    selectedSvc,
+        fecha_hora_propuesta: toIso(selectedDate, selectedTime),
+      });
+      setBooked(true);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message;
+      setBookingError(typeof msg === "string" ? msg : "No se pudo agendar. Intenta de nuevo.");
+    } finally {
+      setBooking(false);
+    }
+  };
 
   if (notFoundError) notFound();
 
@@ -93,7 +192,6 @@ export default function BusinessDetailPage() {
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <h2 className="text-base font-semibold text-slate-900 mb-3">Sobre el negocio</h2>
             <p className="text-sm text-slate-600 leading-relaxed mb-4">{biz.descripcion}</p>
-
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="flex items-start gap-2 text-slate-600">
                 <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
@@ -110,26 +208,31 @@ export default function BusinessDetailPage() {
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <h2 className="text-base font-semibold text-slate-900 mb-4">Servicios disponibles</h2>
             {services.length === 0 ? (
-              <p className="text-sm text-slate-400">Este negocio aun no tiene servicios registrados.</p>
+              <p className="text-sm text-slate-400">Este negocio aún no tiene servicios registrados.</p>
             ) : (
               <div className="space-y-3">
                 {services.map((svc) => (
                   <div
                     key={svc._id}
-                    className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all group"
+                    onClick={() => setSelectedSvc(svc._id)}
+                    className={`flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer ${
+                      selectedSvc === svc._id
+                        ? "border-indigo-300 bg-indigo-50/50"
+                        : "border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30"
+                    }`}
                   >
                     <div className="flex-1 min-w-0 pr-4">
                       <p className="text-sm font-semibold text-slate-900">{svc.nombre}</p>
                       <p className="text-xs text-slate-500 mt-0.5">{svc.descripcion}</p>
-                      <p className="text-xs text-slate-400 mt-1">{svc.duracionMinutos} min</p>
+                      <div className="flex items-center gap-1 mt-1">
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        <span className="text-xs text-slate-400">{svc.duracionMinutos} min</span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
                       <p className="text-base font-bold text-slate-900">
                         {svc.precio === 0 ? "Gratis" : `$${svc.precio.toLocaleString()}`}
                       </p>
-                      <button className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer opacity-0 group-hover:opacity-100">
-                        Agendar
-                      </button>
                     </div>
                   </div>
                 ))}
@@ -138,69 +241,145 @@ export default function BusinessDetailPage() {
           </div>
         </div>
 
-        {/* Columna derecha — panel de reserva */}
+        {/* Panel de reserva */}
         <div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5 sticky top-20">
-            <h2 className="text-base font-semibold text-slate-900 mb-4">Agendar cita</h2>
-
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-600">Servicio</label>
-                <select className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
-                  {services.length === 0
-                    ? <option disabled>Sin servicios disponibles</option>
-                    : services.map((s) => (
-                        <option key={s._id} value={s._id}>
-                          {s.nombre} — {s.precio === 0 ? "Gratis" : `$${s.precio}`}
-                        </option>
-                      ))
-                  }
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-600">Fecha</label>
-                <input
-                  type="date"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-600">Hora disponible</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {["09:00", "10:00", "11:00", "14:00", "15:00", "16:00"].map((t) => (
-                    <button
-                      key={t}
-                      className="py-1.5 text-xs font-medium border border-slate-200 rounded-lg hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700 transition-colors cursor-pointer first:bg-indigo-600 first:text-white first:border-indigo-600"
-                    >
-                      {t}
-                    </button>
-                  ))}
+            {booked ? (
+              /* ── Estado: reserva enviada ── */
+              <div className="text-center py-6 space-y-3">
+                <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle className="w-7 h-7 text-emerald-600" />
                 </div>
+                <div>
+                  <p className="text-base font-semibold text-slate-900">¡Solicitud enviada!</p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    El negocio confirmará tu cita a la brevedad.
+                  </p>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-3 text-left space-y-1">
+                  <p className="text-xs font-semibold text-slate-700">{currentSvc?.nombre}</p>
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    {new Date(`${selectedDate}T${selectedTime}`).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}
+                    {" · "}{selectedTime}
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setBooked(false); setSelectedTime(""); setNota(""); }}
+                  className="w-full py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
+                >
+                  Agendar otra cita
+                </button>
+                <Link
+                  href="/portal/citas"
+                  className="block w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors text-center"
+                >
+                  Ver mis citas
+                </Link>
               </div>
+            ) : (
+              /* ── Formulario de reserva ── */
+              <>
+                <h2 className="text-base font-semibold text-slate-900 mb-4">Agendar cita</h2>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-slate-600">Nota (opcional)</label>
-                <textarea
-                  rows={2}
-                  placeholder="Instrucciones o preferencias..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none placeholder:text-slate-400"
-                />
-              </div>
+                <div className="space-y-3">
+                  {/* Servicio */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-600">Servicio</label>
+                    <select
+                      value={selectedSvc}
+                      onChange={(e) => { setSelectedSvc(e.target.value); setSelectedTime(""); }}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    >
+                      {services.length === 0
+                        ? <option disabled>Sin servicios disponibles</option>
+                        : services.map((s) => (
+                            <option key={s._id} value={s._id}>
+                              {s.nombre} — {s.precio === 0 ? "Gratis" : `$${s.precio}`}
+                            </option>
+                          ))
+                      }
+                    </select>
+                  </div>
 
-              <button
-                disabled={services.length === 0}
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
-              >
-                Confirmar reserva
-              </button>
-            </div>
+                  {/* Fecha */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-600">Fecha</label>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      min={todayStr()}
+                      onChange={(e) => { setSelectedDate(e.target.value); setSelectedTime(""); }}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
 
-            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
-              <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-              Reserva gratuita, cancela cuando quieras
-            </div>
+                  {/* Horarios disponibles */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-600">Hora disponible</label>
+                    {slots.length === 0 ? (
+                      <p className="text-xs text-slate-400">No hay horarios para este servicio.</p>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2">
+                        {slots.map(({ time, blocked }) => (
+                          <button
+                            key={time}
+                            disabled={blocked}
+                            onClick={() => setSelectedTime(time)}
+                            className={`py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                              selectedTime === time
+                                ? "bg-indigo-600 text-white border-indigo-600"
+                                : blocked
+                                ? "border-slate-200 text-slate-300 bg-slate-50"
+                                : "border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700"
+                            }`}
+                          >
+                            {time}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Nota */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-slate-600">Nota (opcional)</label>
+                    <textarea
+                      rows={2}
+                      value={nota}
+                      onChange={(e) => setNota(e.target.value)}
+                      placeholder="Instrucciones o preferencias..."
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none placeholder:text-slate-400"
+                    />
+                  </div>
+
+                  {bookingError && (
+                    <div className="rounded-xl bg-rose-50 border border-rose-200 p-2.5 text-xs text-rose-700">
+                      {bookingError}
+                    </div>
+                  )}
+
+                  {!user && (
+                    <div className="rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-700">
+                      Debes <Link href="/login" className="font-semibold underline">iniciar sesión</Link> para agendar.
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleBook}
+                    disabled={booking || services.length === 0 || !selectedTime}
+                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    {booking ? "Enviando..." : "Confirmar reserva"}
+                  </button>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                  Reserva gratuita, cancela cuando quieras
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

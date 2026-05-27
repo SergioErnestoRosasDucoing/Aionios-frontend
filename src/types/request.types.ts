@@ -8,6 +8,13 @@ export interface SolicitudUsuario {
   telefono: string | null;
 }
 
+export interface SolicitudNegocio {
+  id: number;
+  nombre: string;
+  slug: string;
+  direccion: string | null;
+}
+
 export interface Solicitud {
   id: number;
   id_usuario: number;
@@ -16,6 +23,16 @@ export interface Solicitud {
   fecha_hora_propuesta: string;
   estado: EstadoSolicitud;
   usuario: SolicitudUsuario;
+}
+
+export interface SolicitudCliente {
+  id: number;
+  id_usuario: number;
+  id_negocio: number;
+  id_servicio_nosql: string;
+  fecha_hora_propuesta: string;
+  estado: EstadoSolicitud;
+  negocio: SolicitudNegocio;
 }
 
 export interface CreateSolicitudPayload {

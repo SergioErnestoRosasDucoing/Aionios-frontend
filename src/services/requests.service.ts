@@ -1,7 +1,12 @@
 import { apiClient } from "@/lib/axios";
-import type { Solicitud, CreateSolicitudPayload, EstadoSolicitud } from "@/types/request.types";
+import type { Solicitud, SolicitudCliente, CreateSolicitudPayload, EstadoSolicitud } from "@/types/request.types";
 
 export const requestsService = {
+  async getMine(): Promise<SolicitudCliente[]> {
+    const { data } = await apiClient.get<SolicitudCliente[]>("/requests/mine");
+    return data;
+  },
+
   async getByNegocio(negocioId: number): Promise<Solicitud[]> {
     const { data } = await apiClient.get<Solicitud[]>(`/requests/negocio/${negocioId}`);
     return data;
