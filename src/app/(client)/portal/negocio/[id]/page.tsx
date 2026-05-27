@@ -9,9 +9,11 @@ import { businessService } from "@/services/business.service";
 import { servicesService } from "@/services/services.service";
 import { horariosService } from "@/services/horarios.service";
 import { requestsService } from "@/services/requests.service";
+import { businessUiService } from "@/services/business-ui.service";
 import { useAuth } from "@/context/AuthContext";
 import type { Business } from "@/types/business.types";
 import type { Service } from "@/types/service.types";
+import type { BusinessUiConfig } from "@/types/business-ui.types";
 
 const GRADIENTS = [
   "from-indigo-500 to-violet-600",
@@ -63,6 +65,7 @@ export default function BusinessDetailPage() {
   const [biz,      setBiz]      = useState<Business | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [blocks,   setBlocks]   = useState<any[]>([]);
+  const [uiConfig, setUiConfig] = useState<BusinessUiConfig | null>(null);
   const [loading,  setLoading]  = useState(true);
   const [notFoundError, setNotFoundError] = useState(false);
 
@@ -82,11 +85,13 @@ export default function BusinessDetailPage() {
       businessService.getById(numericId),
       servicesService.getByBusiness(numericId),
       horariosService.getByNegocio(numericId).catch(() => null),
+      businessUiService.getByNegocio(numericId).catch(() => null),
     ])
-      .then(([bizData, svcData, horario]) => {
+      .then(([bizData, svcData, horario, uiData]) => {
         setBiz(bizData);
         setServices(svcData);
         setBlocks(horario?.excepciones_y_festivos ?? []);
+        setUiConfig(uiData);
         if (svcData.length > 0) setSelectedSvc(svcData[0]._id);
       })
       .catch(() => setNotFoundError(true))
@@ -176,15 +181,32 @@ export default function BusinessDetailPage() {
       </Link>
 
       {/* Banner */}
-      <div className={`relative rounded-3xl overflow-hidden bg-gradient-to-br ${gradientFor(biz.id)} h-40 md:h-52 flex items-end p-6`}>
+      <div
+        className="relative rounded-3xl overflow-hidden h-40 md:h-52 flex items-end p-6"
+        style={
+          uiConfig?.color_primario
+            ? { background: `linear-gradient(135deg, ${uiConfig.color_primario}, ${uiConfig.color_primario}99)` }
+            : undefined
+        }
+      >
+        {!uiConfig?.color_primario && (
+          <div className={`absolute inset-0 bg-gradient-to-br ${gradientFor(biz.id)}`} />
+        )}
         <div className="absolute inset-0 bg-black/20" />
         <div className="relative flex items-end gap-4">
-          <div className="w-16 h-16 md:w-20 md:h-20 bg-white rounded-2xl shadow-xl flex items-center justify-center text-3xl font-bold text-slate-700 flex-shrink-0">
+          <div
+            className="w-16 h-16 md:w-20 md:h-20 bg-white rounded-2xl shadow-xl flex items-center justify-center text-3xl font-bold flex-shrink-0"
+            style={{ color: uiConfig?.color_primario ?? "#334155" }}
+          >
             {biz.nombre.charAt(0)}
           </div>
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-white">{biz.nombre}</h1>
-            <p className="text-white/80 text-sm">{biz.direccion}</p>
+            {uiConfig?.slogan ? (
+              <p className="text-white/90 text-sm italic mt-0.5">{uiConfig.slogan}</p>
+            ) : (
+              <p className="text-white/80 text-sm">{biz.direccion}</p>
+            )}
           </div>
         </div>
       </div>
@@ -195,7 +217,9 @@ export default function BusinessDetailPage() {
           {/* Info general */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5">
             <h2 className="text-base font-semibold text-slate-900 mb-3">Sobre el negocio</h2>
-            <p className="text-sm text-slate-600 leading-relaxed mb-4">{biz.descripcion}</p>
+            <p className="text-sm text-slate-600 leading-relaxed mb-4">
+              {uiConfig?.descripcion_corta || biz.descripcion}
+            </p>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="flex items-start gap-2 text-slate-600">
                 <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />

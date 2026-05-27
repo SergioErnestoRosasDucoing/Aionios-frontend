@@ -7,12 +7,25 @@ Frontend de la plataforma Aionios construido con Next.js 16 y React 19.
 
 ---
 
+## USUARIOS
+Cliente: 
+Correo electrónico: cliente@example.com
+Contraseña: cliente123
+
+Dueño de negocio:
+Correo electrónico: "dueno@example.com"
+Contraseña: "dueno123"
+
+
+
 ## Repositorios
 
 | Repositorio | URL |
 |---|---|
 | **Frontend** (este repo) | https://github.com/Aionios-team/Aionios-frontend |
 | **Backend** (NestJS + API) | https://github.com/Aionios-team/Aionios-backend |
+| **Frontend Desplegado** (Next.js) | https://aionios-frontend.vercel.app/login |
+
 
 ---
 
