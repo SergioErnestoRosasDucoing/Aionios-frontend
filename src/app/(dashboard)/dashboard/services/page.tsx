@@ -4,11 +4,65 @@ import { useState, useEffect } from "react";
 import { Scissors, Plus, Search, Clock, DollarSign, MoreHorizontal, X, Pencil, Trash2 } from "lucide-react";
 import { servicesService } from "@/services/services.service";
 import { useMyBusiness } from "@/hooks/useMyBusiness";
-import type { Service, CreateServicePayload, UpdateServicePayload } from "@/types/service.types";
+import type { Service, UpdateServicePayload } from "@/types/service.types";
 
-const EMPTY_FORM = { nombre: "", descripcion: "", precio: 0, duracionMinutos: 30 };
+type FormState = { nombre: string; descripcion: string; precio: number; duracionMinutos: number };
+const EMPTY_FORM: FormState = { nombre: "", descripcion: "", precio: 0, duracionMinutos: 30 };
 
-type FormState = typeof EMPTY_FORM;
+// Defined outside to prevent remount on every render
+function ServiceFormFields({
+  form,
+  setForm,
+}: {
+  form: FormState;
+  setForm: React.Dispatch<React.SetStateAction<FormState>>;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <label className="block text-sm font-medium text-slate-700">Nombre *</label>
+        <input
+          value={form.nombre}
+          onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
+          placeholder="Ej. Corte de cabello"
+          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <label className="block text-sm font-medium text-slate-700">Descripcion *</label>
+        <textarea
+          rows={2}
+          value={form.descripcion}
+          onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))}
+          placeholder="Describe brevemente el servicio..."
+          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-slate-700">Precio ($)</label>
+          <input
+            type="number"
+            min={0}
+            value={form.precio}
+            onChange={(e) => setForm((p) => ({ ...p, precio: Number(e.target.value) }))}
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-slate-700">Duracion (min)</label>
+          <input
+            type="number"
+            min={1}
+            value={form.duracionMinutos}
+            onChange={(e) => setForm((p) => ({ ...p, duracionMinutos: Number(e.target.value) }))}
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ServicesPage() {
   const { business, loading: bizLoading } = useMyBusiness();
@@ -40,7 +94,6 @@ export default function ServicesPage() {
       .finally(() => setLoading(false));
   }, [business, bizLoading]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     if (!menuOpen) return;
     const handler = () => setMenuOpen(null);
@@ -49,7 +102,7 @@ export default function ServicesPage() {
   }, [menuOpen]);
 
   const filtered = services.filter((s) =>
-    s.nombre.toLowerCase().includes(search.toLowerCase())
+    s.nombre.toLowerCase().includes(search.toLowerCase()),
   );
 
   const handleDelete = async (mongoId: string) => {
@@ -119,52 +172,6 @@ export default function ServicesPage() {
     );
   }
 
-  function ServiceFormFields({ form, setForm }: { form: FormState; setForm: (f: FormState) => void }) {
-    return (
-      <div className="space-y-4">
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-slate-700">Nombre *</label>
-          <input
-            value={form.nombre}
-            onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-            placeholder="Ej. Corte de cabello"
-            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-slate-700">Descripcion *</label>
-          <textarea
-            rows={2}
-            value={form.descripcion}
-            onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-            placeholder="Describe brevemente el servicio..."
-            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-slate-700">Precio ($)</label>
-            <input
-              type="number" min={0}
-              value={form.precio}
-              onChange={(e) => setForm({ ...form, precio: Number(e.target.value) })}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-slate-700">Duracion (min)</label>
-            <input
-              type="number" min={1}
-              value={form.duracionMinutos}
-              onChange={(e) => setForm({ ...form, duracionMinutos: Number(e.target.value) })}
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-start justify-between">
@@ -187,7 +194,6 @@ export default function ServicesPage() {
       {error && (
         <div className="rounded-xl bg-rose-50 border border-rose-200 p-4 text-sm text-rose-700">{error}</div>
       )}
-
       {!business && !error && (
         <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-700">
           No tienes un negocio registrado. Crea uno primero desde la sección <strong>Mi negocio</strong>.
@@ -211,9 +217,11 @@ export default function ServicesPage() {
 
       {business && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.length === 0 && !loading ? (
+          {filtered.length === 0 ? (
             <p className="col-span-full text-center text-slate-400 py-12">
-              {services.length === 0 ? "Aun no tienes servicios. Agrega el primero." : "Sin resultados para tu busqueda."}
+              {services.length === 0
+                ? "Aun no tienes servicios. Agrega el primero."
+                : "Sin resultados para tu busqueda."}
             </p>
           ) : (
             filtered.map((svc) => (
@@ -231,8 +239,6 @@ export default function ServicesPage() {
                       <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{svc.descripcion}</p>
                     </div>
                   </div>
-
-                  {/* Dropdown menu */}
                   <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={() => setMenuOpen(menuOpen === svc._id ? null : svc._id)}
@@ -332,7 +338,8 @@ export default function ServicesPage() {
                 Cancelar
               </button>
               <button
-                onClick={handleCreate} disabled={creating}
+                onClick={handleCreate}
+                disabled={creating}
                 className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
               >
                 {creating ? "Creando..." : "Crear servicio"}
@@ -364,7 +371,8 @@ export default function ServicesPage() {
                 Cancelar
               </button>
               <button
-                onClick={handleSave} disabled={saving}
+                onClick={handleSave}
+                disabled={saving}
                 className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
               >
                 {saving ? "Guardando..." : "Guardar cambios"}
