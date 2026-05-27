@@ -7,6 +7,7 @@ import AioniosLogo from "@/components/ui/AioniosLogo";
 import ErrorBanner from "@/components/ui/ErrorBanner";
 import PasswordInput from "@/components/ui/PasswordInput";
 import SubmitButton from "@/components/ui/SubmitButton";
+import axios from "axios";
 import { authService } from "@/services/auth.service";
 
 type Role = "business" | "client";
@@ -23,8 +24,13 @@ async function loginAction(_prev: FormState, formData: FormData): Promise<FormSt
     await authService.login({ email, password });
     window.location.href = role === "business" ? "/dashboard" : "/portal";
     return null;
-  } catch {
-    return { error: "Correo o contraseña incorrectos. Intenta de nuevo." };
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      if (!err.response) return { error: "No se pudo conectar con el servidor. Verifica tu conexión." };
+      if (err.response.status === 401) return { error: "Correo o contraseña incorrectos." };
+      return { error: `Error del servidor (${err.response.status}). Intenta de nuevo.` };
+    }
+    return { error: "Error inesperado. Intenta de nuevo." };
   }
 }
 
