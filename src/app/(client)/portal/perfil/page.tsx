@@ -14,7 +14,7 @@ import type { Review } from "@/types/review.types";
 
 // ── Notification prefs stored in localStorage ──────────────────────────────
 const NOTIF_KEY = "aionios_notif_prefs";
-interface NotifPrefs { email?: boolean; push: boolean; recordatorios: boolean }
+interface NotifPrefs { recordatorios: boolean }
 function loadNotifPrefs(): NotifPrefs {
   try { return JSON.parse(localStorage.getItem(NOTIF_KEY) ?? "{}"); } catch { return {} as NotifPrefs; }
 }
@@ -37,7 +37,6 @@ export default function PerfilPage() {
 
   // ── notifications panel ──────────────────────────────────────────────────
   const [showNotif,   setShowNotif]   = useState(false);
-  const [notifPush,   setNotifPush]   = useState(false);
   const [notifRecord, setNotifRecord] = useState(true);
   const [notifSaved,  setNotifSaved]  = useState(false);
 
@@ -68,7 +67,6 @@ export default function PerfilPage() {
     });
 
     const prefs = loadNotifPrefs();
-    setNotifPush( prefs.push   ?? false);
     setNotifRecord(prefs.recordatorios ?? true);
   }, []);
 
@@ -104,7 +102,7 @@ export default function PerfilPage() {
   };
 
   const saveNotifPrefs = () => {
-    const prefs: NotifPrefs = { email: false, push: notifPush, recordatorios: notifRecord };
+    const prefs: NotifPrefs = { recordatorios: notifRecord };
     localStorage.setItem(NOTIF_KEY, JSON.stringify(prefs));
     setNotifSaved(true);
     setTimeout(() => setNotifSaved(false), 2000);
@@ -238,30 +236,25 @@ export default function PerfilPage() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-slate-900">Notificaciones</p>
-            <p className="text-xs text-slate-400">Correo y push</p>
+            <p className="text-xs text-slate-400">Preferencias de avisos</p>
           </div>
           {showNotif ? <ChevronUp className="w-4 h-4 text-slate-300" /> : <ChevronDown className="w-4 h-4 text-slate-300" />}
         </button>
 
         {showNotif && (
           <div className="px-5 pb-5 border-t border-slate-100 pt-4 space-y-4">
-            {[
-              { label: "Notificaciones push",    sub: "Alertas en el navegador",   value: notifPush,   set: setNotifPush   },
-              { label: "Recordatorios de citas", sub: "24 horas antes de tu cita", value: notifRecord, set: setNotifRecord },
-            ].map(({ label, sub, value, set }) => (
-              <div key={label} className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-medium text-slate-800">{label}</p>
-                  <p className="text-xs text-slate-400">{sub}</p>
-                </div>
-                <button
-                  onClick={() => set((v) => !v)}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors cursor-pointer ${value ? "bg-indigo-600" : "bg-slate-200"}`}
-                >
-                  <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${value ? "translate-x-5" : "translate-x-0"}`} />
-                </button>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-slate-800">Recordatorios de citas</p>
+                <p className="text-xs text-slate-400">24 horas antes de tu cita</p>
               </div>
-            ))}
+              <button
+                onClick={() => setNotifRecord((v) => !v)}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors cursor-pointer ${notifRecord ? "bg-indigo-600" : "bg-slate-200"}`}
+              >
+                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${notifRecord ? "translate-x-5" : "translate-x-0"}`} />
+              </button>
+            </div>
             <button
               onClick={saveNotifPrefs}
               className="mt-2 w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer"
