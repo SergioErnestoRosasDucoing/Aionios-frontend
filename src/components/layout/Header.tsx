@@ -9,16 +9,6 @@ import { useMyBusiness } from "@/hooks/useMyBusiness";
 import { requestsService } from "@/services/requests.service";
 import type { Solicitud } from "@/types/request.types";
 
-const SEEN_KEY = "aionios_seen_notif_ids";
-
-function getSeenIds(): Set<number> {
-  try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) ?? "[]")); }
-  catch { return new Set(); }
-}
-function markAllSeen(ids: number[]) {
-  localStorage.setItem(SEEN_KEY, JSON.stringify(ids));
-}
-
 interface HeaderProps { onMobileMenuOpen: () => void }
 
 export default function Header({ onMobileMenuOpen }: HeaderProps) {
@@ -26,10 +16,10 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
   const { user, logout } = useAuth();
   const { business } = useMyBusiness();
 
-  const [showNotif,  setShowNotif]  = useState(false);
-  const [showUser,   setShowUser]   = useState(false);
-  const [pending,    setPending]    = useState<Solicitud[]>([]);
-  const [unseenCount, setUnseenCount] = useState(0);
+  const [showNotif, setShowNotif] = useState(false);
+  const [showUser,  setShowUser]  = useState(false);
+  const [pending,   setPending]   = useState<Solicitud[]>([]);
+  const [badgeVisible, setBadgeVisible] = useState(false);
 
   const notifRef = useRef<HTMLDivElement>(null);
   const userRef  = useRef<HTMLDivElement>(null);
@@ -44,8 +34,7 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
       .then((reqs) => {
         const pendientes = reqs.filter((r) => r.estado === "PENDIENTE");
         setPending(pendientes);
-        const seen = getSeenIds();
-        setUnseenCount(pendientes.filter((r) => !seen.has(r.id)).length);
+        setBadgeVisible(pendientes.length > 0);
       })
       .catch(() => {});
   }, [business]);
@@ -62,10 +51,7 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
 
   const handleOpenNotif = () => {
     setShowNotif((v) => !v);
-    if (!showNotif && unseenCount > 0) {
-      markAllSeen(pending.map((r) => r.id));
-      setUnseenCount(0);
-    }
+    if (!showNotif) setBadgeVisible(false);
   };
 
   const handleLogout = () => { logout(); router.push("/business/login"); };
@@ -100,9 +86,9 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
             className="relative w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <Bell className="w-4 h-4 text-slate-600" />
-            {unseenCount > 0 && (
+            {badgeVisible && (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-indigo-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-                {unseenCount > 9 ? "9+" : unseenCount}
+                {pending.length > 9 ? "9+" : pending.length}
               </span>
             )}
           </button>
