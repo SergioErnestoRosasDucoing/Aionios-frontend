@@ -16,8 +16,11 @@ const UNIDADES: { value: UnidadDuracion; label: string }[] = [
   { value: "a_convenir", label: "A convenir" },
 ];
 
-type FormState = { nombre: string; descripcion: string; precio: number; duracion: number | null; unidadDuracion: UnidadDuracion };
-const EMPTY_FORM: FormState = { nombre: "", descripcion: "", precio: 0, duracion: 30, unidadDuracion: "minutos" };
+type FormState = { nombre: string; descripcion: string; precio: string; duracion: string; unidadDuracion: UnidadDuracion };
+const EMPTY_FORM: FormState = { nombre: "", descripcion: "", precio: "", duracion: "30", unidadDuracion: "minutos" };
+
+function parseNum(v: string): number { return Math.max(0, Number(v) || 0); }
+function parseDur(v: string): number | null { const n = Number(v); return n > 0 ? n : null; }
 
 // Defined outside to prevent remount on every render
 function ServiceFormFields({
@@ -52,10 +55,14 @@ function ServiceFormFields({
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-slate-700">Precio ($)</label>
           <input
-            type="number"
-            min={0}
+            type="text"
+            inputMode="decimal"
+            placeholder="0"
             value={form.precio}
-            onChange={(e) => setForm((p) => ({ ...p, precio: Number(e.target.value) }))}
+            onChange={(e) => {
+              const v = e.target.value.replace(/[^0-9.]/g, "");
+              setForm((p) => ({ ...p, precio: v }));
+            }}
             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
           />
         </div>
@@ -66,7 +73,7 @@ function ServiceFormFields({
             onChange={(e) => setForm((p) => ({
               ...p,
               unidadDuracion: e.target.value as UnidadDuracion,
-              duracion: e.target.value === "a_convenir" ? null : (p.duracion ?? 1),
+              duracion: e.target.value === "a_convenir" ? "" : (p.duracion || "1"),
             }))}
             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
           >
@@ -80,10 +87,14 @@ function ServiceFormFields({
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-slate-700">Cantidad</label>
           <input
-            type="number"
-            min={1}
-            value={form.duracion ?? 1}
-            onChange={(e) => setForm((p) => ({ ...p, duracion: Number(e.target.value) }))}
+            type="text"
+            inputMode="numeric"
+            placeholder="1"
+            value={form.duracion}
+            onChange={(e) => {
+              const v = e.target.value.replace(/[^0-9]/g, "");
+              setForm((p) => ({ ...p, duracion: v }));
+            }}
             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
           />
         </div>
@@ -155,7 +166,14 @@ export default function ServicesPage() {
     }
     setCreating(true); setCreateError(null);
     try {
-      const created = await servicesService.create({ ...createForm, negocio_id: business.id });
+      const created = await servicesService.create({
+        nombre: createForm.nombre,
+        descripcion: createForm.descripcion,
+        precio: parseNum(createForm.precio),
+        duracion: createForm.unidadDuracion === "a_convenir" ? null : parseDur(createForm.duracion),
+        unidadDuracion: createForm.unidadDuracion,
+        negocio_id: business.id,
+      });
       setServices((prev) => [created, ...prev]);
       setShowCreate(false);
     } catch {
@@ -166,7 +184,7 @@ export default function ServicesPage() {
   // ── Edit ──
   const openEdit = (svc: Service) => {
     setEditSvc(svc);
-    setEditForm({ nombre: svc.nombre, descripcion: svc.descripcion, precio: svc.precio, duracion: svc.duracion, unidadDuracion: svc.unidadDuracion });
+    setEditForm({ nombre: svc.nombre, descripcion: svc.descripcion, precio: String(svc.precio), duracion: svc.duracion != null ? String(svc.duracion) : "", unidadDuracion: svc.unidadDuracion });
     setEditError(null);
     setMenuOpen(null);
   };
@@ -179,7 +197,13 @@ export default function ServicesPage() {
     }
     setSaving(true); setEditError(null);
     try {
-      const updated = await servicesService.update(editSvc._id, editForm as UpdateServicePayload);
+      const updated = await servicesService.update(editSvc._id, {
+        nombre: editForm.nombre,
+        descripcion: editForm.descripcion,
+        precio: parseNum(editForm.precio),
+        duracion: editForm.unidadDuracion === "a_convenir" ? null : parseDur(editForm.duracion),
+        unidadDuracion: editForm.unidadDuracion,
+      } as UpdateServicePayload);
       setServices((prev) => prev.map((s) => (s._id === editSvc._id ? updated : s)));
       setEditSvc(null);
     } catch {
