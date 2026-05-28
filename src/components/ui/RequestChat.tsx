@@ -48,7 +48,7 @@ export default function RequestChat({ solicitudId, autorId, autorNombre, autorTi
   // ── Polling con ref para evitar stale closures ─────────────────────────────
   // La idea: el setInterval llama siempre a `pollRef.current`, que apunta
   // a la versión actualizada de la función sin recrear el intervalo.
-  const pollRef = useRef<() => Promise<void>>();
+  const pollRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   pollRef.current = async () => {
     try {
