@@ -2,9 +2,10 @@ import { apiClient } from "@/lib/axios";
 import type { Notificacion } from "@/types/notification.types";
 
 export const notificationsService = {
-  async getByUser(usuarioId: number): Promise<Notificacion[]> {
+  async getByUser(usuarioId: number, limit = 10): Promise<Notificacion[]> {
     const { data } = await apiClient.get<Notificacion[]>(
-      `/notifications/user/${usuarioId}`
+      `/notifications/user/${usuarioId}`,
+      { params: { limit } }
     );
     return data;
   },
@@ -19,5 +20,10 @@ export const notificationsService = {
       { leido: true }
     );
     return data;
+  },
+
+  /** Elimina en la BD todas las notificaciones genéricas antiguas del interceptor */
+  async clearLegacy(usuarioId: number): Promise<void> {
+    await apiClient.delete(`/notifications/user/${usuarioId}/legacy`);
   },
 };

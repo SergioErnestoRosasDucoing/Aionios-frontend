@@ -5,44 +5,58 @@ import { notificationsService } from "@/services/notifications.service";
 import type { Notificacion } from "@/types/notification.types";
 
 const POLL_INTERVAL = 30_000; // 30 segundos
+const LIMIT = 10;
+
+/** Filtra notificaciones genéricas del interceptor que aún estén en la BD */
+function isLegacy(n: Notificacion) {
+  return n.titulo === "Actividad registrada";
+}
 
 export function useNotifications(usuarioId: number | undefined) {
   const [notifications, setNotifications] = useState<Notificacion[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]             = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cleanedRef  = useRef(false); // solo limpiamos legacy una vez por sesión
 
-  const fetch = useCallback(async () => {
+  const fetchNotifications = useCallback(async () => {
     if (!usuarioId) return;
     try {
-      const data = await notificationsService.getByUser(usuarioId);
-      setNotifications(data);
+      const data = await notificationsService.getByUser(usuarioId, LIMIT);
+      setNotifications(data.filter((n) => !isLegacy(n)));
     } catch {
-      // silencioso — no romper la UI si falla la red
+      // silencioso — no romper la UI
     }
   }, [usuarioId]);
 
-  // Carga inicial + polling
+  // Carga inicial + limpieza de legacy + polling
   useEffect(() => {
     if (!usuarioId) return;
 
+    // Limpieza de las notificaciones antiguas del interceptor (una sola vez por sesión)
+    if (!cleanedRef.current) {
+      cleanedRef.current = true;
+      notificationsService.clearLegacy(usuarioId).catch(() => {});
+    }
+
     setLoading(true);
     notificationsService
-      .getByUser(usuarioId)
-      .then(setNotifications)
+      .getByUser(usuarioId, LIMIT)
+      .then((data) => setNotifications(data.filter((n) => !isLegacy(n))))
       .catch(() => {})
       .finally(() => setLoading(false));
 
-    intervalRef.current = setInterval(fetch, POLL_INTERVAL);
+    intervalRef.current = setInterval(fetchNotifications, POLL_INTERVAL);
 
-    // Refresca cuando el tab vuelve a estar visible
-    const onVisible = () => { if (document.visibilityState === "visible") fetch(); };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchNotifications();
+    };
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [usuarioId, fetch]);
+  }, [usuarioId, fetchNotifications]);
 
   const remove = useCallback(async (id: string) => {
     // Optimista: quitar de la lista de inmediato
@@ -50,12 +64,12 @@ export function useNotifications(usuarioId: number | undefined) {
     try {
       await notificationsService.remove(id);
     } catch {
-      // Si falla, volver a cargar para restaurar el estado real
-      fetch();
+      // Si el DELETE falló, restaurar solo esa notificación
+      fetchNotifications();
     }
-  }, [fetch]);
+  }, [fetchNotifications]);
 
   const unread = notifications.filter((n) => !n.leido).length;
 
-  return { notifications, unread, loading, remove, refetch: fetch };
+  return { notifications, unread, loading, remove, refetch: fetchNotifications };
 }
