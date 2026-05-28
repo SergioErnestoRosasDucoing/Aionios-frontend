@@ -110,6 +110,7 @@ export default function ServicesPage() {
   const [error, setError]       = useState<string | null>(null);
   const [search, setSearch]     = useState("");
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   // Create modal
   const [showCreate, setShowCreate]   = useState(false);
@@ -144,10 +145,11 @@ export default function ServicesPage() {
     s.nombre.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const handleDelete = async (mongoId: string) => {
-    if (!confirm("¿Eliminar este servicio?")) return;
-    await servicesService.remove(mongoId);
-    setServices((prev) => prev.filter((s) => s._id !== mongoId));
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    await servicesService.remove(deleteId);
+    setServices((prev) => prev.filter((s) => s._id !== deleteId));
+    setDeleteId(null);
   };
 
   // ── Create ──
@@ -302,7 +304,7 @@ export default function ServicesPage() {
                           <Pencil className="w-3.5 h-3.5" /> Editar
                         </button>
                         <button
-                          onClick={() => { setMenuOpen(null); handleDelete(svc._id); }}
+                          onClick={() => { setMenuOpen(null); setDeleteId(svc._id); }}
                           className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-600 hover:bg-rose-50 cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" /> Eliminar
@@ -338,7 +340,7 @@ export default function ServicesPage() {
                   </button>
                   <span className="text-slate-300">|</span>
                   <button
-                    onClick={() => handleDelete(svc._id)}
+                    onClick={() => setDeleteId(svc._id)}
                     className="text-xs font-medium text-slate-400 hover:text-rose-500 cursor-pointer"
                   >
                     Eliminar
@@ -390,6 +392,37 @@ export default function ServicesPage() {
                 className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
               >
                 {creating ? "Creando..." : "Crear servicio"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete confirm modal ── */}
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-rose-700">¿Eliminar servicio?</h2>
+              <button onClick={() => setDeleteId(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600">
+              Esta acción es <strong>irreversible</strong>. El servicio será eliminado permanentemente del catálogo.
+            </p>
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setDeleteId(null)}
+                className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDelete}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer"
+              >
+                Eliminar
               </button>
             </div>
           </div>

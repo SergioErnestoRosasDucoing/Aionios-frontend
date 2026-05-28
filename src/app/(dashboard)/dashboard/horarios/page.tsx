@@ -71,6 +71,10 @@ export default function HorariosPage() {
   const [blockError, setBlockError] = useState<string | null>(null);
   const [blockSuccess, setBlockSuccess] = useState(false);
 
+  const todayStr = new Date().toISOString().split("T")[0];
+  const nowTimeStr = new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const isBlockDateToday = blockForm.fecha === todayStr;
+
   const weekStart = getWeekStart(weekOffset);
   const weekEnd = addDays(weekStart, 6);
   const weekDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -115,6 +119,14 @@ export default function HorariosPage() {
     if (!business) return;
     if (!blockForm.fecha || !blockForm.hora_inicio || !blockForm.hora_fin) {
       setBlockError("Completa fecha y horario.");
+      return;
+    }
+    if (blockForm.fecha < todayStr) {
+      setBlockError("No puedes bloquear una fecha que ya pasó.");
+      return;
+    }
+    if (blockForm.fecha === todayStr && blockForm.hora_inicio <= nowTimeStr) {
+      setBlockError("La hora de inicio debe ser posterior a la hora actual.");
       return;
     }
     if (blockForm.hora_inicio >= blockForm.hora_fin) {
@@ -333,7 +345,8 @@ export default function HorariosPage() {
                 <input
                   type="date"
                   value={blockForm.fecha}
-                  onChange={(e) => setBlockForm((p) => ({ ...p, fecha: e.target.value }))}
+                  min={todayStr}
+                  onChange={(e) => setBlockForm((p) => ({ ...p, fecha: e.target.value, hora_inicio: "09:00", hora_fin: "10:00" }))}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
@@ -343,6 +356,7 @@ export default function HorariosPage() {
                   <input
                     type="time"
                     value={blockForm.hora_inicio}
+                    min={isBlockDateToday ? nowTimeStr : undefined}
                     onChange={(e) => setBlockForm((p) => ({ ...p, hora_inicio: e.target.value }))}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />

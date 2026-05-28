@@ -14,7 +14,9 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
   const { business } = useMyBusiness();
 
   const [showNotif, setShowNotif] = useState(false);
+  const [showUser,  setShowUser]  = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const userRef  = useRef<HTMLDivElement>(null);
 
   const initial     = user?.nombre?.charAt(0).toUpperCase() ?? "U";
   const displayName = business?.nombre ?? `${user?.nombre ?? ""} ${user?.apellido ?? ""}`.trim();
@@ -23,6 +25,9 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
     function handleClickOutside(e: MouseEvent) {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setShowNotif(false);
+      }
+      if (userRef.current && !userRef.current.contains(e.target as Node)) {
+        setShowUser(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -83,8 +88,11 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
         <div className="w-px h-6 bg-slate-200" />
 
         {/* Usuario con dropdown */}
-        <div className="relative group">
-          <button className="flex items-center gap-2.5 hover:bg-slate-50 rounded-xl px-2 py-1.5 transition-colors cursor-pointer">
+        <div ref={userRef} className="relative">
+          <button
+            onClick={() => setShowUser((v) => !v)}
+            className="flex items-center gap-2.5 hover:bg-slate-50 rounded-xl px-2 py-1.5 transition-colors cursor-pointer"
+          >
             <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">
               {initial}
             </div>
@@ -96,17 +104,19 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
             </div>
           </button>
 
-          <div className="absolute right-0 top-12 w-44 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden z-50 hidden group-hover:block">
-            <div className="px-4 py-3 border-b border-slate-100">
-              <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+          {showUser && (
+            <div className="absolute right-0 top-12 w-44 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden z-50">
+              <div className="px-4 py-3 border-b border-slate-100">
+                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="w-full text-left px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+              >
+                Cerrar sesión
+              </button>
             </div>
-            <button
-              onClick={handleLogout}
-              className="w-full text-left px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 transition-colors"
-            >
-              Cerrar sesion
-            </button>
-          </div>
+          )}
         </div>
       </div>
     </header>
