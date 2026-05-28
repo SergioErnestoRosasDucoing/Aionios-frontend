@@ -55,7 +55,16 @@ function toIso(fecha: string, hora: string): string {
 }
 
 function todayStr(): string {
-  return new Date().toISOString().split("T")[0];
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm   = String(d.getMonth() + 1).padStart(2, "0");
+  const dd   = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function nowTimeStr(): string {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
 export default function BusinessDetailPage() {
@@ -116,10 +125,12 @@ export default function BusinessDetailPage() {
   const slots = useMemo(() => {
     if (!currentSvc || isLongService) return [];
     const mins = duracionEnMinutos(currentSvc.duracion, currentSvc.unidadDuracion);
-    const all = generateSlots(mins);
+    const all  = generateSlots(mins);
+    const isToday = selectedDate === todayStr();
+    const now     = nowTimeStr();
     return all.map((slot) => ({
       time: slot,
-      blocked: isBlocked(slot, selectedDate, blocks),
+      blocked: isBlocked(slot, selectedDate, blocks) || (isToday && slot <= now),
     }));
   }, [currentSvc, isLongService, selectedDate, blocks]);
 
@@ -137,8 +148,7 @@ export default function BusinessDetailPage() {
       router.push("/login");
       return;
     }
-    const horaFinal = isLongService ? "09:00" : selectedTime;
-    if (!selectedSvc || !selectedDate || (!isLongService && !horaFinal)) {
+    if (!selectedSvc || !selectedDate || (!isLongService && !selectedTime)) {
       setBookingError("Selecciona un servicio y fecha.");
       return;
     }
@@ -146,6 +156,12 @@ export default function BusinessDetailPage() {
       setBookingError("No puedes agendar en una fecha pasada.");
       return;
     }
+    if (!isLongService && selectedDate === todayStr() && selectedTime <= nowTimeStr()) {
+      setBookingError("Ese horario ya pasó. Selecciona una hora disponible.");
+      return;
+    }
+    // Para servicios largos/a convenir se envía sin hora específica (el negocio coordina)
+    const horaFinal = isLongService ? "00:00" : selectedTime;
     setBooking(true);
     setBookingError(null);
     try {
@@ -311,7 +327,7 @@ export default function BusinessDetailPage() {
                   <p className="text-xs font-semibold text-slate-700">{currentSvc?.nombre}</p>
                   <div className="flex items-center gap-1.5 text-xs text-slate-500">
                     <CalendarDays className="w-3.5 h-3.5" />
-                    {new Date(`${selectedDate}T09:00`).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}
+                    {new Date(`${selectedDate}T12:00:00`).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}
                     {!isLongService && ` · ${selectedTime}`}
                   </div>
                 </div>
