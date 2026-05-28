@@ -50,10 +50,11 @@ function ExplorarContent() {
 
   const filtered = businesses.filter((b) => {
     const text = `${b.nombre} ${b.descripcion ?? ""}`.toLowerCase();
-    const matchesSearch   = !search || text.includes(search.toLowerCase());
+    const matchesSearch = !search || text.includes(search.toLowerCase());
     const matchesCategory =
       !selectedCategory ||
-      (CATEGORY_KEYWORDS[selectedCategory]?.some((kw) => text.includes(kw)) ?? false);
+      b.categoria === selectedCategory ||
+      (!b.categoria && (CATEGORY_KEYWORDS[selectedCategory]?.some((kw) => text.includes(kw)) ?? false));
     return matchesSearch && matchesCategory;
   });
 
