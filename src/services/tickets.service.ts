@@ -31,4 +31,9 @@ export const ticketsService = {
     const { data } = await apiClient.patch<Ticket>(`/support-tickets/${id}`, { estado });
     return data;
   },
+
+  async getAll(): Promise<Ticket[]> {
+    const { data } = await apiClient.get<Ticket[]>("/support-tickets");
+    return data;
+  },
 };

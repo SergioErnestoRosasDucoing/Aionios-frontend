@@ -15,12 +15,15 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  ShieldCheck,
+  Ticket,
 } from "lucide-react";
 import AioniosLogo from "@/components/ui/AioniosLogo";
 import { useAuth } from "@/context/AuthContext";
 import { useMyBusiness } from "@/hooks/useMyBusiness";
+import { ROLES } from "@/types/auth.types";
 
-const navItems = [
+const businessNavItems = [
   { label: "Panel principal",   href: "/dashboard",          icon: LayoutDashboard },
   { label: "Mi negocio",        href: "/dashboard/business", icon: Building2       },
   { label: "Servicios",         href: "/dashboard/services", icon: Scissors        },
@@ -29,6 +32,11 @@ const navItems = [
   { label: "Pagos",             href: "/dashboard/payments", icon: CreditCard      },
   { label: "Reseñas",           href: "/dashboard/reviews",  icon: Star            },
   { label: "Soporte",           href: "/dashboard/support",  icon: HeadphonesIcon  },
+];
+
+const adminNavItems = [
+  { label: "Panel de administración", href: "/dashboard/admin",         icon: ShieldCheck },
+  { label: "Gestión de tickets",      href: "/dashboard/admin/tickets", icon: Ticket      },
 ];
 
 interface SidebarProps {
@@ -44,8 +52,13 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
   const { user, logout } = useAuth();
   const { business } = useMyBusiness();
 
+  const isSuperAdmin = user?.id_rol === ROLES.SUPERADMIN;
+  const navItems     = isSuperAdmin ? adminNavItems : businessNavItems;
+
   const initial      = user?.nombre?.charAt(0).toUpperCase() ?? "U";
-  const displayName  = business?.nombre ?? `${user?.nombre ?? ""} ${user?.apellido ?? ""}`.trim();
+  const displayName  = isSuperAdmin
+    ? `${user?.nombre ?? ""} ${user?.apellido ?? ""}`.trim()
+    : (business?.nombre ?? `${user?.nombre ?? ""} ${user?.apellido ?? ""}`.trim());
   const displayEmail = user?.email ?? "";
 
   const handleLogout = () => { logout(); router.push("/business/login"); };
@@ -120,7 +133,9 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             </div>
             <div className="min-w-0">
               <p className="text-white text-xs font-semibold truncate">{displayName}</p>
-              <p className="text-slate-500 text-xs truncate">{displayEmail}</p>
+              <p className="text-slate-500 text-xs truncate">
+                {isSuperAdmin ? "Super administrador" : displayEmail}
+              </p>
             </div>
           </div>
         ) : (

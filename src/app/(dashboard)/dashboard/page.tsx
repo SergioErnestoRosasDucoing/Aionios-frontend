@@ -6,8 +6,10 @@ import {
   TrendingUp, Clock, CheckCircle, XCircle, ArrowUpRight,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useMyBusiness } from "@/hooks/useMyBusiness";
+import { ROLES } from "@/types/auth.types";
 import { requestsService } from "@/services/requests.service";
 import { reviewsService } from "@/services/reviews.service";
 import { paymentsService } from "@/services/payments.service";
@@ -81,6 +83,14 @@ function formatHora(iso: string) {
 export default function DashboardPage() {
   const { user } = useAuth();
   const { business, loading: bizLoading } = useMyBusiness();
+  const router = useRouter();
+
+  // Superadmin no tiene panel de negocio — redirigir a su área
+  useEffect(() => {
+    if (user && user.id_rol === ROLES.SUPERADMIN) {
+      router.replace("/dashboard/admin/tickets");
+    }
+  }, [user, router]);
 
   const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
