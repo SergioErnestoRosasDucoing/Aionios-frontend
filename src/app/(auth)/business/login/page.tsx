@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { Compass, CalendarDays, Star, User } from "lucide-react";
+import { Building2, LayoutDashboard, Scissors, CalendarDays } from "lucide-react";
 import AioniosLogo from "@/components/ui/AioniosLogo";
 import ErrorBanner from "@/components/ui/ErrorBanner";
 import PasswordInput from "@/components/ui/PasswordInput";
 import SubmitButton from "@/components/ui/SubmitButton";
 import axios from "axios";
 import { authService } from "@/services/auth.service";
-import { ROLES } from "@/types/auth.types";
+import { ROLES, BUSINESS_ROLE_IDS } from "@/types/auth.types";
 
 type FormState = { error: string } | null;
 
@@ -22,11 +22,11 @@ async function loginAction(_prev: FormState, formData: FormData): Promise<FormSt
   try {
     const { user } = await authService.login({ email, password });
 
-    if (user.id_rol !== ROLES.CLIENT) {
-      return { error: "Esta cuenta es de negocio. Usa el portal de negocios para iniciar sesión." };
+    if (!BUSINESS_ROLE_IDS.includes(user.id_rol)) {
+      return { error: "Esta cuenta es de cliente. Usa el portal de clientes para iniciar sesión." };
     }
 
-    window.location.href = "/portal";
+    window.location.href = user.id_rol === ROLES.SUPERADMIN ? "/dashboard/support" : "/dashboard";
     return null;
   } catch (err) {
     if (axios.isAxiosError(err)) {
@@ -38,7 +38,7 @@ async function loginAction(_prev: FormState, formData: FormData): Promise<FormSt
   }
 }
 
-export default function LoginPage() {
+export default function BusinessLoginPage() {
   const [state, action, isPending] = useActionState(loginAction, null);
 
   return (
@@ -46,9 +46,9 @@ export default function LoginPage() {
       {/* Panel izquierdo */}
       <div className="hidden lg:flex lg:w-1/2 bg-slate-900 relative overflow-hidden flex-col justify-between p-12">
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -left-40 w-96 h-96 bg-violet-600/20 rounded-full blur-3xl" />
-          <div className="absolute top-1/2 -right-20 w-80 h-80 bg-indigo-600/15 rounded-full blur-3xl" />
-          <div className="absolute -bottom-20 left-1/4 w-72 h-72 bg-violet-500/10 rounded-full blur-3xl" />
+          <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl" />
+          <div className="absolute top-1/2 -right-20 w-80 h-80 bg-violet-600/15 rounded-full blur-3xl" />
+          <div className="absolute -bottom-20 left-1/4 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl" />
         </div>
 
         <div className="relative">
@@ -58,19 +58,20 @@ export default function LoginPage() {
         <div className="relative space-y-6">
           <div className="space-y-3">
             <h1 className="text-4xl font-bold text-white leading-tight">
-              Encuentra servicios{" "}
-              <span className="text-violet-400">cerca de ti</span>
+              Gestiona tu negocio{" "}
+              <span className="text-indigo-400">desde un solo lugar</span>
             </h1>
             <p className="text-slate-400 text-lg leading-relaxed max-w-md">
-              Miles de negocios verificados listos para atenderte. Agenda citas en segundos.
+              Panel completo para administrar citas, servicios, pagos y clientes en tiempo real.
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             {[
-              { icon: Compass,      color: "bg-violet-600/30 text-violet-400", title: "Explora",   desc: "Descubre negocios cerca de ti" },
-              { icon: CalendarDays, color: "bg-indigo-600/30 text-indigo-400", title: "Agenda",    desc: "Reserva citas fácilmente" },
-              { icon: Star,         color: "bg-amber-600/30  text-amber-400",  title: "Comenta",   desc: "Valora tu experiencia" },
+              { icon: LayoutDashboard, color: "bg-indigo-600/30 text-indigo-400", title: "Panel central",   desc: "Métricas y resumen en tiempo real" },
+              { icon: Scissors,        color: "bg-violet-600/30 text-violet-400", title: "Servicios",       desc: "Catálogo personalizable" },
+              { icon: CalendarDays,    color: "bg-indigo-600/30 text-indigo-400", title: "Citas",           desc: "Agenda y horarios automáticos" },
+              { icon: Building2,       color: "bg-violet-600/30 text-violet-400", title: "Mi negocio",      desc: "Perfil y configuración" },
             ].map(({ icon: Icon, color, title, desc }) => (
               <div key={title} className="bg-white/5 border border-white/10 rounded-2xl p-4">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center mb-3 ${color}`}>
@@ -106,18 +107,18 @@ export default function LoginPage() {
             <AioniosLogo size="md" textColor="text-slate-900" />
           </div>
 
-          <div className="mb-2 lg:mt-0 mt-8">
-            <div className="inline-flex items-center gap-2 bg-violet-100 text-violet-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
-              <User className="w-3.5 h-3.5" />
-              Portal de clientes
+          <div className="mb-6 mt-8 lg:mt-0">
+            <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
+              <Building2 className="w-3.5 h-3.5" />
+              Portal de negocios
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">Bienvenido de nuevo</h2>
-            <p className="text-slate-500 mt-1">Inicia sesión para gestionar tus citas y explorar negocios</p>
+            <h2 className="text-2xl font-bold text-slate-900">Accede a tu panel</h2>
+            <p className="text-slate-500 mt-1">Inicia sesión como dueño o colaborador de negocio</p>
           </div>
 
-          {state?.error && <div className="mb-4 mt-4"><ErrorBanner message={state.error} /></div>}
+          {state?.error && <div className="mb-4"><ErrorBanner message={state.error} /></div>}
 
-          <form action={action} className="space-y-4 mt-6">
+          <form action={action} className="space-y-4">
             <div className="space-y-1.5">
               <label htmlFor="email" className="block text-sm font-medium text-slate-700">
                 Correo electrónico
@@ -126,8 +127,8 @@ export default function LoginPage() {
                 id="email"
                 name="email"
                 type="email"
-                placeholder="tu@correo.com"
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all text-sm"
+                placeholder="tu@negocio.com"
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
               />
             </div>
 
@@ -136,32 +137,32 @@ export default function LoginPage() {
                 <label htmlFor="password" className="block text-sm font-medium text-slate-700">
                   Contraseña
                 </label>
-                <button type="button" className="text-xs text-violet-600 hover:text-violet-700 font-medium cursor-pointer">
+                <button type="button" className="text-xs text-indigo-600 hover:text-indigo-700 font-medium cursor-pointer">
                   ¿Olvidaste tu contraseña?
                 </button>
               </div>
               <PasswordInput id="password" name="password" />
             </div>
 
-            <SubmitButton loading={isPending} loadingText="Iniciando sesión..." colorScheme="violet">
-              Iniciar sesión
+            <SubmitButton loading={isPending} loadingText="Iniciando sesión..." colorScheme="indigo">
+              Entrar al panel
             </SubmitButton>
           </form>
 
           <p className="mt-6 text-center text-sm text-slate-500">
-            ¿No tienes cuenta?{" "}
-            <Link href="/register" className="text-violet-600 hover:text-violet-700 font-semibold">
-              Regístrate gratis
+            ¿No tienes cuenta de negocio?{" "}
+            <Link href="/business/register" className="text-indigo-600 hover:text-indigo-700 font-semibold">
+              Registra tu negocio
             </Link>
           </p>
 
           <div className="mt-8 pt-6 border-t border-slate-200">
-            <p className="text-center text-xs text-slate-400 mb-3">¿Eres un negocio?</p>
+            <p className="text-center text-xs text-slate-400 mb-3">¿Eres cliente?</p>
             <Link
-              href="/business/login"
+              href="/login"
               className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-all"
             >
-              Acceder al portal de negocios
+              Ir al portal de clientes
             </Link>
           </div>
         </div>
