@@ -32,71 +32,63 @@ export default function RequestChat({ solicitudId, autorId, autorNombre, autorTi
 
   const bottomRef    = useRef<HTMLDivElement>(null);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
-  // Guardamos el último ID conocido para no re-renderizar si no hay mensajes nuevos
-  const lastIdRef    = useRef<string | null>(null);
+  const sendingRef   = useRef(false); // evita que el poll pise mensajes en vuelo
 
-  // ── Scroll inteligente: baja sólo si ya estás cerca del fondo ─────────────
+  // ── Scroll inteligente ─────────────────────────────────────────────────────
   const scrollToBottom = useCallback((force = false) => {
     const box = scrollBoxRef.current;
     if (!box) return;
     const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
-    if (force || nearBottom) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
+    if (force || nearBottom) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  // ── Polling con ref para evitar stale closures ─────────────────────────────
-  // La idea: el setInterval llama siempre a `pollRef.current`, que apunta
-  // a la versión actualizada de la función sin recrear el intervalo.
-  const pollRef = useRef<() => Promise<void>>(() => Promise.resolve());
-
-  pollRef.current = async () => {
+  // ── Fetch base ─────────────────────────────────────────────────────────────
+  const fetchMessages = useCallback(async () => {
     try {
       const data = await requestsService.getMensajes(solicitudId);
-      const newLastId = data.at(-1)?._id ?? null;
-      if (newLastId !== lastIdRef.current) {
-        lastIdRef.current = newLastId;
+      // Solo actualiza si no hay un mensaje en vuelo (evita pisar optimistas)
+      if (!sendingRef.current) {
         setMessages(data);
       }
     } catch { /* silencioso */ }
-  };
+  }, [solicitudId]);
 
+  // ── Polling: setInterval con función siempre actualizada ───────────────────
   useEffect(() => {
-    let alive = true;
+    let cancelled = false;
 
-    const poll = () => { if (alive) pollRef.current?.(); };
+    const tick = async () => {
+      if (cancelled) return;
+      await fetchMessages();
+    };
 
     // Carga inicial
     setLoading(true);
-    poll();
-    // Pequeño retraso para que la primera carga se vea antes de mostrar el spinner
-    Promise.resolve().then(() => { if (alive) setLoading(false); });
+    tick().finally(() => { if (!cancelled) setLoading(false); });
 
-    const id = setInterval(poll, POLL_MS);
+    const id = setInterval(tick, POLL_MS);
 
-    // Pausa cuando el tab está oculto; refresco inmediato al volver
-    const onVisibility = () => {
-      if (!document.hidden) poll();
-    };
+    const onVisibility = () => { if (!document.hidden) tick(); };
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
-      alive = false;
+      cancelled = true;
       clearInterval(id);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [solicitudId]); // sólo se recrea si cambia el ID de la solicitud
+  }, [fetchMessages]);
 
   // Scroll cuando llegan mensajes nuevos
   useEffect(() => {
     if (!loading) scrollToBottom();
   }, [messages, loading, scrollToBottom]);
 
-  // ── Envío con actualización optimista ─────────────────────────────────────
+  // ── Envío ──────────────────────────────────────────────────────────────────
   const handleSend = async () => {
     const trimmed = text.trim();
     if (!trimmed || sending) return;
 
+    // Mensaje optimista
     const tempId = `tmp_${Date.now()}`;
     const optimistic: RequestMessage = {
       _id:          tempId,
@@ -108,26 +100,28 @@ export default function RequestChat({ solicitudId, autorId, autorNombre, autorTi
       createdAt:    new Date().toISOString(),
     };
 
+    sendingRef.current = true;
+    setSending(true);
     setMessages((prev) => [...prev, optimistic]);
     setText("");
-    setSending(true);
     setTimeout(() => scrollToBottom(true), 50);
 
     try {
-      const real = await requestsService.addMensaje(solicitudId, {
+      await requestsService.addMensaje(solicitudId, {
         autor_id:     autorId,
         autor_nombre: autorNombre,
         autor_tipo:   autorTipo,
         texto:        trimmed,
       });
-      // Reemplaza el optimista con el real y actualiza el lastId
-      setMessages((prev) => prev.map((m) => (m._id === tempId ? real : m)));
-      lastIdRef.current = real._id;
+      // Refetch inmediato para reemplazar el optimista con el real del servidor
+      const fresh = await requestsService.getMensajes(solicitudId);
+      setMessages(fresh);
     } catch {
       // Revierte si falla
       setMessages((prev) => prev.filter((m) => m._id !== tempId));
       setText(trimmed);
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   };
@@ -169,7 +163,7 @@ export default function RequestChat({ solicitudId, autorId, autorNombre, autorTi
             const isTemp = m._id.startsWith("tmp_");
             return (
               <div key={m._id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[80%] space-y-0.5 ${isMe ? "items-end" : "items-start"} flex flex-col`}>
+                <div className={`max-w-[80%] space-y-0.5 flex flex-col ${isMe ? "items-end" : "items-start"}`}>
                   {!isMe && (
                     <p className="text-[10px] text-slate-400 px-1">
                       {m.autor_nombre} · {m.autor_tipo === "negocio" ? "Negocio" : "Cliente"}

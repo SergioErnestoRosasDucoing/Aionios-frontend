@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import {
   HeadphonesIcon, Plus, Search, Clock, CheckCircle,
-  MessageSquare, ChevronRight, X, Send, ChevronLeft,
+  MessageSquare, ChevronRight, X, Send, ChevronLeft, Loader2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ticketsService } from "@/services/tickets.service";
@@ -215,19 +215,33 @@ export default function SupportPage() {
             </span>
             <span className="text-[10px] text-slate-400 font-medium">En vivo · actualiza cada 3 s</span>
           </div>
-          <div ref={ticketScrollRef} className="space-y-3 max-h-96 overflow-y-auto mb-4">
-            {selected.mensajes.length === 0 && (
+          <div ref={ticketScrollRef} className="space-y-3 max-h-96 overflow-y-auto mb-4 border-t border-slate-100 pt-4">
+            {selected.mensajes.length === 0 ? (
               <p className="text-xs text-slate-400 text-center py-4">Sin mensajes aún.</p>
+            ) : (
+              selected.mensajes.map((m, i) => {
+                const isMe = m.autor_id === user?.id;
+                return (
+                  <div key={i} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[80%] space-y-0.5 flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-slate-700">
+                          {m.autor_nombre ?? `Usuario #${m.autor_id}`}
+                        </span>
+                        <span className="text-[10px] text-slate-400">{timeAgo(m.fecha)}</span>
+                      </div>
+                      <div className={`px-3 py-2 rounded-2xl text-sm leading-snug ${
+                        isMe
+                          ? "bg-indigo-600 text-white rounded-br-sm"
+                          : "bg-slate-100 text-slate-800 rounded-bl-sm"
+                      }`}>
+                        {m.texto}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
             )}
-            {selected.mensajes.map((m, i) => (
-              <div key={i} className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-700">{m.autor_nombre ?? `Usuario #${m.autor_id}`}</span>
-                  <span className="text-[10px] text-slate-400">{timeAgo(m.fecha)}</span>
-                </div>
-                <p className="text-sm text-slate-600 bg-slate-50 rounded-xl px-3 py-2">{m.texto}</p>
-              </div>
-            ))}
             <div ref={ticketBottomRef} />
           </div>
 
@@ -238,7 +252,8 @@ export default function SupportPage() {
                 rows={2}
                 value={replyText}
                 onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Escribe un mensaje..."
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleReply(); } }}
+                placeholder="Escribe un mensaje... (Enter para enviar)"
                 className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none placeholder:text-slate-400"
               />
               <button
@@ -246,7 +261,7 @@ export default function SupportPage() {
                 disabled={sending || !replyText.trim()}
                 className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
               >
-                <Send className="w-4 h-4" />
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </button>
             </div>
           )}
