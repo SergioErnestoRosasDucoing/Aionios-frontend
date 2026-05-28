@@ -108,9 +108,14 @@ export default function BusinessLoginPage() {
           </div>
 
           <div className="mb-6 mt-8 lg:mt-0">
-            <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
-              <Building2 className="w-3.5 h-3.5" />
-              Portal de negocios
+            <div className="flex items-center gap-3 bg-amber-500 text-white px-4 py-3 rounded-2xl mb-5 shadow-sm shadow-amber-200">
+              <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold leading-tight">Portal de negocios</p>
+                <p className="text-amber-100 text-xs leading-tight">Gestiona tu negocio y citas</p>
+              </div>
             </div>
             <h2 className="text-2xl font-bold text-slate-900">Accede a tu panel</h2>
             <p className="text-slate-500 mt-1">Inicia sesión como dueño o colaborador de negocio</p>

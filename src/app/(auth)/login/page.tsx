@@ -107,9 +107,14 @@ export default function LoginPage() {
           </div>
 
           <div className="mb-2 lg:mt-0 mt-8">
-            <div className="inline-flex items-center gap-2 bg-violet-100 text-violet-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
-              <User className="w-3.5 h-3.5" />
-              Portal de clientes
+            <div className="flex items-center gap-3 bg-violet-600 text-white px-4 py-3 rounded-2xl mb-5 shadow-sm shadow-violet-200">
+              <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                <User className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold leading-tight">Portal de clientes</p>
+                <p className="text-violet-200 text-xs leading-tight">Reserva citas y explora negocios</p>
+              </div>
             </div>
             <h2 className="text-2xl font-bold text-slate-900">¡Bienvenido!</h2>
             <p className="text-slate-500 mt-1">Inicia sesión para gestionar tus citas y explorar negocios</p>
