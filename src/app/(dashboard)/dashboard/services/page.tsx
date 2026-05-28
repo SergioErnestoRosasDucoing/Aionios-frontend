@@ -1,21 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Scissors, Plus, Search, Clock, DollarSign, MoreHorizontal, X, Pencil, Trash2,
-  HardHat, Shirt, HeartPulse, BookOpen, Wrench, Laptop, Camera, type LucideIcon,
-} from "lucide-react";
-
-const CATEGORY_ICON: Record<string, { Icon: LucideIcon; bg: string; text: string }> = {
-  belleza:      { Icon: Scissors,   bg: "bg-pink-50",    text: "text-pink-600"   },
-  construccion: { Icon: HardHat,    bg: "bg-orange-50",  text: "text-orange-600" },
-  tintoreria:   { Icon: Shirt,      bg: "bg-sky-50",     text: "text-sky-600"    },
-  salud:        { Icon: HeartPulse, bg: "bg-rose-50",    text: "text-rose-600"   },
-  educacion:    { Icon: BookOpen,   bg: "bg-amber-50",   text: "text-amber-600"  },
-  hogar:        { Icon: Wrench,     bg: "bg-green-50",   text: "text-green-600"  },
-  tecnologia:   { Icon: Laptop,     bg: "bg-violet-50",  text: "text-violet-600" },
-  fotografia:   { Icon: Camera,     bg: "bg-indigo-50",  text: "text-indigo-600" },
-};
+import { Plus, Search, Clock, DollarSign, MoreHorizontal, X, Pencil, Trash2 } from "lucide-react";
 import { servicesService } from "@/services/services.service";
 import { useMyBusiness } from "@/hooks/useMyBusiness";
 import type { Service, UpdateServicePayload } from "@/types/service.types";
@@ -238,22 +224,15 @@ export default function ServicesPage() {
                 : "Sin resultados para tu busqueda."}
             </p>
           ) : (
-            filtered.map((svc) => {
-              const cat = CATEGORY_ICON[business.categoria ?? ""] ?? { Icon: Scissors, bg: "bg-indigo-50", text: "text-indigo-600" };
-              return (
+            filtered.map((svc) => (
               <div
                 key={svc._id}
                 className="bg-white rounded-2xl border border-slate-200 p-5 flex flex-col gap-4 hover:shadow-md transition-all"
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${cat.bg}`}>
-                      <cat.Icon className={`w-5 h-5 ${cat.text}`} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 leading-tight">{svc.nombre}</p>
-                      <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{svc.descripcion}</p>
-                    </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900 leading-tight">{svc.nombre}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{svc.descripcion}</p>
                   </div>
                   <div className="relative flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                     <button
@@ -314,8 +293,7 @@ export default function ServicesPage() {
                   </button>
                 </div>
               </div>
-              );
-            })
+            ))
           )}
 
           <button
