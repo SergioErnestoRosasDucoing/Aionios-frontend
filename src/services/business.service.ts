@@ -23,6 +23,11 @@ export const businessService = {
     return data;
   },
 
+  async getBySlug(slug: string): Promise<Business> {
+    const { data } = await apiClient.get<Business>(`/business/slug/${slug}`);
+    return data;
+  },
+
   async create(payload: CreateBusinessPayload): Promise<Business> {
     const { data } = await apiClient.post<Business>("/business", payload);
     return data;

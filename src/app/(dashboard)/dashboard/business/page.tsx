@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Building2, MapPin, Phone, Globe, ChevronRight, Plus, Palette, CheckCircle } from "lucide-react";
+import { Building2, MapPin, Phone, Globe, ChevronRight, Plus, Palette, CheckCircle, Tag } from "lucide-react";
 import { businessService } from "@/services/business.service";
 import { businessUiService } from "@/services/business-ui.service";
 import { useAuth } from "@/context/AuthContext";
 import { useMyBusiness } from "@/hooks/useMyBusiness";
+import { CATEGORIES } from "@/lib/mock-businesses";
 import type { BusinessUiConfig } from "@/types/business-ui.types";
 
 const COLOR_OPTIONS = [
@@ -24,7 +25,7 @@ export default function BusinessPage() {
   const { business, loading, error, setBusiness } = useMyBusiness();
 
   const [form, setForm] = useState({
-    nombre: "", descripcion: "", direccion: "", telefono_comercial: "", slug: "",
+    nombre: "", descripcion: "", direccion: "", telefono_comercial: "", slug: "", categoria: "",
   });
   const [saving, setSaving]       = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export default function BusinessPage() {
 
   const [creating, setCreating]     = useState(false);
   const [createForm, setCreateForm] = useState({
-    nombre: "", descripcion: "", direccion: "", telefono_comercial: "", slug: "",
+    nombre: "", descripcion: "", direccion: "", telefono_comercial: "", slug: "", categoria: "",
   });
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -51,6 +52,7 @@ export default function BusinessPage() {
         direccion:          business.direccion ?? "",
         telefono_comercial: business.telefono_comercial ?? "",
         slug:               business.slug,
+        categoria:          business.categoria ?? "",
       });
       businessUiService.getByNegocio(business.id)
         .then((cfg) => {
@@ -99,14 +101,14 @@ export default function BusinessPage() {
 
   const handleCreate = async () => {
     if (!user) return;
-    const { nombre, descripcion, direccion, telefono_comercial, slug } = createForm;
-    if (!nombre || !descripcion || !direccion || !telefono_comercial || !slug) {
+    const { nombre, descripcion, direccion, telefono_comercial, slug, categoria } = createForm;
+    if (!nombre || !descripcion || !direccion || !telefono_comercial || !slug || !categoria) {
       setCreateError("Por favor completa todos los campos.");
       return;
     }
     setCreating(true); setCreateError(null);
     try {
-      const newBiz = await businessService.create({ nombre, descripcion, direccion, telefono_comercial, slug, id_dueno: user.id });
+      const newBiz = await businessService.create({ nombre, descripcion, direccion, telefono_comercial, slug, categoria, id_dueno: user.id });
       setBusiness(newBiz);
     } catch {
       setCreateError("No se pudo crear el negocio. Intenta de nuevo.");
@@ -147,10 +149,10 @@ export default function BusinessPage() {
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { field: "nombre",             label: "Nombre del negocio", placeholder: "Mi Negocio SA"    },
-              { field: "slug",               label: "Slug (URL)",          placeholder: "mi-negocio"       },
-              { field: "telefono_comercial", label: "Teléfono",           placeholder: "4771234567"       },
-              { field: "direccion",          label: "Dirección",           placeholder: "Calle 123, Ciudad"},
+              { field: "nombre",             label: "Nombre del negocio", placeholder: "Mi Negocio SA"     },
+              { field: "slug",               label: "URL del negocio",    placeholder: "mi-negocio"        },
+              { field: "telefono_comercial", label: "Teléfono",           placeholder: "4771234567"        },
+              { field: "direccion",          label: "Dirección",          placeholder: "Calle 123, Ciudad" },
             ].map(({ field, label, placeholder }) => (
               <div key={field} className="space-y-1.5">
                 <label className="block text-sm font-medium text-slate-700">{label}</label>
@@ -162,6 +164,19 @@ export default function BusinessPage() {
                 />
               </div>
             ))}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-slate-700">Categoría</label>
+              <select
+                value={createForm.categoria}
+                onChange={(e) => setCreateForm((p) => ({ ...p, categoria: e.target.value }))}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm cursor-pointer"
+              >
+                <option value="">Selecciona una categoría</option>
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.slug} value={cat.slug}>{cat.label}</option>
+                ))}
+              </select>
+            </div>
             <div className="sm:col-span-2 space-y-1.5">
               <label className="block text-sm font-medium text-slate-700">Descripción</label>
               <textarea
@@ -225,10 +240,23 @@ export default function BusinessPage() {
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-slate-700">
-              <span className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" /> Slug (URL)</span>
+              <span className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" /> URL del negocio</span>
             </label>
             <input value={form.slug} onChange={handleChange("slug")}
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
+            <p className="text-xs text-slate-400">Ej: mi-negocio → aionios.com/portal/negocio/mi-negocio</p>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-slate-700">
+              <span className="flex items-center gap-1.5"><Tag className="w-3.5 h-3.5" /> Categoría</span>
+            </label>
+            <select value={form.categoria} onChange={(e) => setForm((p) => ({ ...p, categoria: e.target.value }))}
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm cursor-pointer">
+              <option value="">Sin categoría</option>
+              {CATEGORIES.map((cat) => (
+                <option key={cat.slug} value={cat.slug}>{cat.label}</option>
+              ))}
+            </select>
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-slate-700">
@@ -260,7 +288,7 @@ export default function BusinessPage() {
           </p>
           <div className="flex gap-3">
             <button
-              onClick={() => setForm({ nombre: business.nombre, descripcion: business.descripcion, direccion: business.direccion ?? "", telefono_comercial: business.telefono_comercial ?? "", slug: business.slug })}
+              onClick={() => setForm({ nombre: business.nombre, descripcion: business.descripcion, direccion: business.direccion ?? "", telefono_comercial: business.telefono_comercial ?? "", slug: business.slug, categoria: business.categoria ?? "" })}
               className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
             >
               Cancelar

@@ -5,6 +5,7 @@ export interface Business {
   direccion: string;
   telefono_comercial: string | null;
   slug: string;
+  categoria: string | null;
   id_dueno: number;
 }
 
@@ -14,6 +15,7 @@ export interface CreateBusinessPayload {
   direccion: string;
   telefono_comercial: string;
   slug: string;
+  categoria: string;
   id_dueno: number;
 }
 
@@ -23,6 +25,7 @@ export interface UpdateBusinessPayload {
   direccion?: string;
   telefono_comercial?: string;
   slug?: string;
+  categoria?: string;
 }
 
 export interface StaffMember {

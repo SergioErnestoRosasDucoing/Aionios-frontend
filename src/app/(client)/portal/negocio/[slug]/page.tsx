@@ -57,9 +57,8 @@ function todayStr(): string {
 }
 
 export default function BusinessDetailPage() {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const router   = useRouter();
-  const numericId = parseInt(id, 10);
   const { user } = useAuth();
 
   const [biz,      setBiz]      = useState<Business | null>(null);
@@ -79,14 +78,18 @@ export default function BusinessDetailPage() {
   const [booked,       setBooked]       = useState(false);
 
   useEffect(() => {
-    if (isNaN(numericId)) { setNotFoundError(true); return; }
+    if (!slug) { setNotFoundError(true); return; }
 
-    Promise.all([
-      businessService.getById(numericId),
-      servicesService.getByBusiness(numericId),
-      horariosService.getByNegocio(numericId).catch(() => null),
-      businessUiService.getByNegocio(numericId).catch(() => null),
-    ])
+    businessService.getBySlug(slug)
+      .then((bizData) => {
+        const negocioId = bizData.id;
+        return Promise.all([
+          Promise.resolve(bizData),
+          servicesService.getByBusiness(negocioId),
+          horariosService.getByNegocio(negocioId).catch(() => null),
+          businessUiService.getByNegocio(negocioId).catch(() => null),
+        ]);
+      })
       .then(([bizData, svcData, horario, uiData]) => {
         setBiz(bizData);
         setServices(svcData);
@@ -96,7 +99,7 @@ export default function BusinessDetailPage() {
       })
       .catch(() => setNotFoundError(true))
       .finally(() => setLoading(false));
-  }, [numericId]);
+  }, [slug]);
 
   const currentSvc = useMemo(
     () => services.find((s) => s._id === selectedSvc),
@@ -111,7 +114,6 @@ export default function BusinessDetailPage() {
     }));
   }, [currentSvc, selectedDate, blocks]);
 
-  // Reset selected time if it becomes blocked or slots change
   useEffect(() => {
     const available = slots.filter((s) => !s.blocked);
     if (selectedTime && slots.find((s) => s.time === selectedTime)?.blocked) {
@@ -139,7 +141,7 @@ export default function BusinessDetailPage() {
     try {
       await requestsService.create({
         id_usuario:           user.id,
-        id_negocio:           numericId,
+        id_negocio:           biz!.id,
         id_servicio_nosql:    selectedSvc,
         fecha_hora_propuesta: toIso(selectedDate, selectedTime),
       });
@@ -273,7 +275,6 @@ export default function BusinessDetailPage() {
         <div>
           <div className="bg-white rounded-2xl border border-slate-200 p-5 sticky top-20">
             {booked ? (
-              /* ── Estado: reserva enviada ── */
               <div className="text-center py-6 space-y-3">
                 <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
                   <CheckCircle className="w-7 h-7 text-emerald-600" />
@@ -306,12 +307,10 @@ export default function BusinessDetailPage() {
                 </Link>
               </div>
             ) : (
-              /* ── Formulario de reserva ── */
               <>
                 <h2 className="text-base font-semibold text-slate-900 mb-4">Agendar cita</h2>
 
                 <div className="space-y-3">
-                  {/* Servicio */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-slate-600">Servicio</label>
                     <select
@@ -330,7 +329,6 @@ export default function BusinessDetailPage() {
                     </select>
                   </div>
 
-                  {/* Fecha */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-slate-600">Fecha</label>
                     <input
@@ -342,7 +340,6 @@ export default function BusinessDetailPage() {
                     />
                   </div>
 
-                  {/* Horarios disponibles */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-slate-600">Hora disponible</label>
                     {slots.length === 0 ? (
@@ -369,7 +366,6 @@ export default function BusinessDetailPage() {
                     )}
                   </div>
 
-                  {/* Nota */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-slate-600">Nota (opcional)</label>
                     <textarea

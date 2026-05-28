@@ -168,7 +168,7 @@ export default function PortalHome() {
               {featured.map((biz) => (
                 <Link
                   key={biz.id}
-                  href={`/portal/negocio/${biz.id}`}
+                  href={`/portal/negocio/${biz.slug}`}
                   className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-md hover:border-slate-300 transition-all group"
                 >
                   <div className={`h-24 bg-gradient-to-br ${gradientFor(biz.id)} relative flex items-end p-3`}>
@@ -202,7 +202,7 @@ export default function PortalHome() {
               {recent.map((biz) => (
                 <Link
                   key={biz.id}
-                  href={`/portal/negocio/${biz.id}`}
+                  href={`/portal/negocio/${biz.slug}`}
                   className="flex items-center gap-4 bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-sm hover:border-slate-300 transition-all group"
                 >
                   <div className={`w-14 h-14 bg-gradient-to-br ${gradientFor(biz.id)} rounded-xl flex items-center justify-center text-white text-xl font-bold flex-shrink-0`}>

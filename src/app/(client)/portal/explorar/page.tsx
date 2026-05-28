@@ -156,7 +156,7 @@ function ExplorarContent() {
             filtered.map((biz) => (
               <Link
                 key={biz.id}
-                href={`/portal/negocio/${biz.id}`}
+                href={`/portal/negocio/${biz.slug}`}
                 className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-md hover:border-slate-300 transition-all group"
               >
                 <div className={`h-28 bg-gradient-to-br ${gradientFor(biz.id)} relative flex items-end p-4`}>

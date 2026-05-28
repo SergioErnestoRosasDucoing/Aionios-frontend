@@ -315,7 +315,7 @@ export default function CitasPage() {
                   )}
 
                   <Link
-                    href={`/portal/negocio/${cita.id_negocio}`}
+                    href={`/portal/negocio/${cita.negocio.slug}`}
                     className="inline-flex items-center gap-0.5 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
                   >
                     Ver negocio <ChevronRight className="w-3 h-3" />
