@@ -1,8 +1,9 @@
-type ColorScheme = "indigo" | "violet";
+type ColorScheme = "indigo" | "violet" | "amber";
 
 const colorMap: Record<ColorScheme, string> = {
   indigo: "bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400",
   violet: "bg-violet-600 hover:bg-violet-700 disabled:bg-violet-400",
+  amber:  "bg-amber-500 hover:bg-amber-600 disabled:bg-amber-300",
 };
 
 interface SubmitButtonProps {

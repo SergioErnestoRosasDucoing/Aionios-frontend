@@ -144,7 +144,7 @@ export default function BusinessLoginPage() {
               <PasswordInput id="password" name="password" />
             </div>
 
-            <SubmitButton loading={isPending} loadingText="Iniciando sesión..." colorScheme="indigo">
+            <SubmitButton loading={isPending} loadingText="Iniciando sesión..." colorScheme="amber">
               Entrar al panel
             </SubmitButton>
           </form>
