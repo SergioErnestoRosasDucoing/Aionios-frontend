@@ -4,10 +4,20 @@ import { useState, useEffect } from "react";
 import { Plus, Search, Clock, DollarSign, MoreHorizontal, X, Pencil, Trash2 } from "lucide-react";
 import { servicesService } from "@/services/services.service";
 import { useMyBusiness } from "@/hooks/useMyBusiness";
-import type { Service, UpdateServicePayload } from "@/types/service.types";
+import type { Service, UpdateServicePayload, UnidadDuracion } from "@/types/service.types";
+import { formatDuracion } from "@/types/service.types";
 
-type FormState = { nombre: string; descripcion: string; precio: number; duracionMinutos: number };
-const EMPTY_FORM: FormState = { nombre: "", descripcion: "", precio: 0, duracionMinutos: 30 };
+const UNIDADES: { value: UnidadDuracion; label: string }[] = [
+  { value: "minutos",    label: "Minutos"    },
+  { value: "horas",      label: "Horas"      },
+  { value: "dias",       label: "Días"       },
+  { value: "semanas",    label: "Semanas"    },
+  { value: "meses",      label: "Meses"      },
+  { value: "a_convenir", label: "A convenir" },
+];
+
+type FormState = { nombre: string; descripcion: string; precio: number; duracion: number | null; unidadDuracion: UnidadDuracion };
+const EMPTY_FORM: FormState = { nombre: "", descripcion: "", precio: 0, duracion: 30, unidadDuracion: "minutos" };
 
 // Defined outside to prevent remount on every render
 function ServiceFormFields({
@@ -50,16 +60,34 @@ function ServiceFormFields({
           />
         </div>
         <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-slate-700">Duracion (min)</label>
+          <label className="block text-sm font-medium text-slate-700">Unidad de duración</label>
+          <select
+            value={form.unidadDuracion}
+            onChange={(e) => setForm((p) => ({
+              ...p,
+              unidadDuracion: e.target.value as UnidadDuracion,
+              duracion: e.target.value === "a_convenir" ? null : (p.duracion ?? 1),
+            }))}
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+          >
+            {UNIDADES.map((u) => (
+              <option key={u.value} value={u.value}>{u.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      {form.unidadDuracion !== "a_convenir" && (
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-slate-700">Cantidad</label>
           <input
             type="number"
             min={1}
-            value={form.duracionMinutos}
-            onChange={(e) => setForm((p) => ({ ...p, duracionMinutos: Number(e.target.value) }))}
+            value={form.duracion ?? 1}
+            onChange={(e) => setForm((p) => ({ ...p, duracion: Number(e.target.value) }))}
             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
           />
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -138,7 +166,7 @@ export default function ServicesPage() {
   // ── Edit ──
   const openEdit = (svc: Service) => {
     setEditSvc(svc);
-    setEditForm({ nombre: svc.nombre, descripcion: svc.descripcion, precio: svc.precio, duracionMinutos: svc.duracionMinutos });
+    setEditForm({ nombre: svc.nombre, descripcion: svc.descripcion, precio: svc.precio, duracion: svc.duracion, unidadDuracion: svc.unidadDuracion });
     setEditError(null);
     setMenuOpen(null);
   };
@@ -271,9 +299,9 @@ export default function ServicesPage() {
                   <div className="text-center p-2 bg-slate-50 rounded-xl">
                     <div className="flex items-center justify-center gap-1 text-slate-700">
                       <Clock className="w-3 h-3" />
-                      <span className="text-sm font-bold">{svc.duracionMinutos}</span>
+                      <span className="text-sm font-bold">{formatDuracion(svc.duracion, svc.unidadDuracion)}</span>
                     </div>
-                    <p className="text-xs text-slate-400 mt-0.5">Min</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Duración</p>
                   </div>
                 </div>
 

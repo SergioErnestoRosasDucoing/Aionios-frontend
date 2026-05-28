@@ -12,6 +12,7 @@ import { businessUiService } from "@/services/business-ui.service";
 import { useAuth } from "@/context/AuthContext";
 import type { Business } from "@/types/business.types";
 import type { Service } from "@/types/service.types";
+import { formatDuracion, duracionEnMinutos } from "@/types/service.types";
 import type { BusinessUiConfig } from "@/types/business-ui.types";
 
 const GRADIENTS = [
@@ -27,9 +28,9 @@ const gradientFor = (id: number) => GRADIENTS[id % GRADIENTS.length];
 const HOUR_START = 9;
 const HOUR_END   = 18;
 
-function generateSlots(duracionMinutos: number): string[] {
+function generateSlots(duracionMins: number): string[] {
   const slots: string[] = [];
-  const step = Math.max(duracionMinutos, 30);
+  const step = Math.max(Math.min(duracionMins, HOUR_END * 60 - HOUR_START * 60), 30);
   for (let mins = HOUR_START * 60; mins + step <= HOUR_END * 60; mins += step) {
     const h = Math.floor(mins / 60).toString().padStart(2, "0");
     const m = (mins % 60).toString().padStart(2, "0");
@@ -37,6 +38,8 @@ function generateSlots(duracionMinutos: number): string[] {
   }
   return slots;
 }
+
+const UNIDADES_LARGAS = new Set(["dias", "semanas", "meses", "a_convenir"]);
 
 function isBlocked(slot: string, fecha: string, blocks: any[]): boolean {
   return blocks.some((b) => {
@@ -108,13 +111,17 @@ export default function BusinessDetailPage() {
     [services, selectedSvc],
   );
 
+  const isLongService = currentSvc ? UNIDADES_LARGAS.has(currentSvc.unidadDuracion) : false;
+
   const slots = useMemo(() => {
-    const all = generateSlots(currentSvc?.duracionMinutos ?? 60);
+    if (!currentSvc || isLongService) return [];
+    const mins = duracionEnMinutos(currentSvc.duracion, currentSvc.unidadDuracion);
+    const all = generateSlots(mins);
     return all.map((slot) => ({
       time: slot,
       blocked: isBlocked(slot, selectedDate, blocks),
     }));
-  }, [currentSvc, selectedDate, blocks]);
+  }, [currentSvc, isLongService, selectedDate, blocks]);
 
   useEffect(() => {
     const available = slots.filter((s) => !s.blocked);
@@ -130,8 +137,9 @@ export default function BusinessDetailPage() {
       router.push("/login");
       return;
     }
-    if (!selectedSvc || !selectedDate || !selectedTime) {
-      setBookingError("Selecciona un servicio, fecha y hora.");
+    const horaFinal = isLongService ? "09:00" : selectedTime;
+    if (!selectedSvc || !selectedDate || (!isLongService && !horaFinal)) {
+      setBookingError("Selecciona un servicio y fecha.");
       return;
     }
     if (selectedDate < todayStr()) {
@@ -145,7 +153,7 @@ export default function BusinessDetailPage() {
         id_usuario:           user.id,
         id_negocio:           biz!.id,
         id_servicio_nosql:    selectedSvc,
-        fecha_hora_propuesta: toIso(selectedDate, selectedTime),
+        fecha_hora_propuesta: toIso(selectedDate, horaFinal),
       });
       setBooked(true);
     } catch (err: any) {
@@ -270,7 +278,7 @@ export default function BusinessDetailPage() {
                       <p className="text-xs text-slate-500 mt-0.5">{svc.descripcion}</p>
                       <div className="flex items-center gap-1 mt-1">
                         <Clock className="w-3 h-3 text-slate-400" />
-                        <span className="text-xs text-slate-400">{svc.duracionMinutos} min</span>
+                        <span className="text-xs text-slate-400">{formatDuracion(svc.duracion, svc.unidadDuracion)}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
@@ -303,8 +311,8 @@ export default function BusinessDetailPage() {
                   <p className="text-xs font-semibold text-slate-700">{currentSvc?.nombre}</p>
                   <div className="flex items-center gap-1.5 text-xs text-slate-500">
                     <CalendarDays className="w-3.5 h-3.5" />
-                    {new Date(`${selectedDate}T${selectedTime}`).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}
-                    {" · "}{selectedTime}
+                    {new Date(`${selectedDate}T09:00`).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}
+                    {!isLongService && ` · ${selectedTime}`}
                   </div>
                 </div>
                 <button
@@ -354,31 +362,37 @@ export default function BusinessDetailPage() {
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-600">Hora disponible</label>
-                    {slots.length === 0 ? (
-                      <p className="text-xs text-slate-400">No hay horarios para este servicio.</p>
-                    ) : (
-                      <div className="grid grid-cols-3 gap-2">
-                        {slots.map(({ time, blocked }) => (
-                          <button
-                            key={time}
-                            disabled={blocked}
-                            onClick={() => setSelectedTime(time)}
-                            className={`py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-                              selectedTime === time
-                                ? "bg-indigo-600 text-white border-indigo-600"
-                                : blocked
-                                ? "border-slate-200 text-slate-300 bg-slate-50"
-                                : "border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700"
-                            }`}
-                          >
-                            {time}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  {isLongService ? (
+                    <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-3 text-xs text-indigo-700">
+                      Este servicio tiene una duración de <strong>{currentSvc && formatDuracion(currentSvc.duracion, currentSvc.unidadDuracion)}</strong>. El negocio coordinará contigo el horario de inicio.
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-slate-600">Hora disponible</label>
+                      {slots.length === 0 ? (
+                        <p className="text-xs text-slate-400">No hay horarios para este servicio.</p>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-2">
+                          {slots.map(({ time, blocked }) => (
+                            <button
+                              key={time}
+                              disabled={blocked}
+                              onClick={() => setSelectedTime(time)}
+                              className={`py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                                selectedTime === time
+                                  ? "bg-indigo-600 text-white border-indigo-600"
+                                  : blocked
+                                  ? "border-slate-200 text-slate-300 bg-slate-50"
+                                  : "border-slate-200 hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-700"
+                              }`}
+                            >
+                              {time}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-slate-600">Nota (opcional)</label>
@@ -405,7 +419,7 @@ export default function BusinessDetailPage() {
 
                   <button
                     onClick={handleBook}
-                    disabled={booking || services.length === 0 || !selectedTime}
+                    disabled={booking || services.length === 0 || (!isLongService && !selectedTime)}
                     className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
                   >
                     {booking ? "Enviando..." : "Confirmar reserva"}
