@@ -59,17 +59,26 @@ export function useNotifications(usuarioId: number | undefined) {
   }, [usuarioId, fetchNotifications]);
 
   const remove = useCallback(async (id: string) => {
-    // Optimista: quitar de la lista de inmediato
     setNotifications((prev) => prev.filter((n) => n._id !== id));
     try {
       await notificationsService.remove(id);
     } catch {
-      // Si el DELETE falló, restaurar solo esa notificación
       fetchNotifications();
     }
   }, [fetchNotifications]);
 
+  const markRead = useCallback(async (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n._id === id ? { ...n, leido: true } : n))
+    );
+    try {
+      await notificationsService.markRead(id);
+    } catch {
+      // silencioso — no crítico
+    }
+  }, []);
+
   const unread = notifications.filter((n) => !n.leido).length;
 
-  return { notifications, unread, loading, remove, refetch: fetchNotifications };
+  return { notifications, unread, loading, remove, markRead, refetch: fetchNotifications };
 }
