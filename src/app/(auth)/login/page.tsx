@@ -159,7 +159,7 @@ export default function LoginPage() {
             <p className="text-center text-xs text-slate-400 mb-3">¿Eres un negocio?</p>
             <Link
               href="/business/login"
-              className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-all"
+              className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold transition-all"
             >
               Acceder al portal de negocios
             </Link>
