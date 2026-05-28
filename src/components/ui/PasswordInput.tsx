@@ -8,6 +8,9 @@ interface PasswordInputProps {
   name: string;
   label?: string;
   placeholder?: string;
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  error?: string;
 }
 
 export default function PasswordInput({
@@ -15,8 +18,13 @@ export default function PasswordInput({
   name,
   label,
   placeholder = "••••••••",
+  value,
+  onChange,
+  error,
 }: PasswordInputProps) {
   const [show, setShow] = useState(false);
+
+  const controlled = value !== undefined;
 
   return (
     <div className="space-y-1.5">
@@ -31,7 +39,12 @@ export default function PasswordInput({
           name={name}
           type={show ? "text" : "password"}
           placeholder={placeholder}
-          className="w-full px-4 py-2.5 pr-11 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm"
+          {...(controlled ? { value, onChange } : {})}
+          className={`w-full px-4 py-2.5 pr-11 bg-white border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all text-sm ${
+            error
+              ? "border-rose-400 focus:ring-rose-400"
+              : "border-slate-200 focus:ring-indigo-500"
+          }`}
         />
         <button
           type="button"
@@ -41,6 +54,7 @@ export default function PasswordInput({
           {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         </button>
       </div>
+      {error && <p className="text-xs text-rose-600">{error}</p>}
     </div>
   );
 }

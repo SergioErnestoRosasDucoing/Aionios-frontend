@@ -1,36 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { useActionState } from "react";
 import { Check, User } from "lucide-react";
 import AioniosLogo from "@/components/ui/AioniosLogo";
-import ErrorBanner from "@/components/ui/ErrorBanner";
 import PasswordInput from "@/components/ui/PasswordInput";
 import SubmitButton from "@/components/ui/SubmitButton";
 import { authService } from "@/services/auth.service";
 import { ROLES } from "@/types/auth.types";
+import axios from "axios";
 
-type FormState = { error: string } | null;
-
-async function registerAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const nombre   = formData.get("nombre")   as string;
-  const apellido = formData.get("apellido") as string;
-  const email    = formData.get("email")    as string;
-  const password = formData.get("password") as string;
-  const telefono = formData.get("telefono") as string;
-
-  if (!nombre || !apellido || !email || !password || !telefono) {
-    return { error: "Por favor completa todos los campos." };
-  }
-
-  try {
-    await authService.register({ nombre, apellido, email, password, telefono, id_rol: ROLES.CLIENT });
-    window.location.href = "/portal";
-    return null;
-  } catch {
-    return { error: "No se pudo crear la cuenta. El correo ya puede estar registrado." };
-  }
-}
+interface Fields { nombre: string; apellido: string; telefono: string; email: string; password: string }
+interface FieldErrors { nombre?: string; apellido?: string; telefono?: string; email?: string; password?: string; general?: string }
 
 const FEATURES = [
   "Descubre negocios cerca de ti",
@@ -40,7 +21,61 @@ const FEATURES = [
 ];
 
 export default function RegisterPage() {
-  const [state, action, isPending] = useActionState(registerAction, null);
+  const [fields, setFields] = useState<Fields>({ nombre: "", apellido: "", telefono: "", email: "", password: "" });
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [isPending, setIsPending] = useState(false);
+
+  const set = (key: keyof Fields) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFields((prev) => ({ ...prev, [key]: e.target.value }));
+    setErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
+
+  const validate = (): FieldErrors => {
+    const e: FieldErrors = {};
+    if (!fields.nombre.trim())   e.nombre   = "El nombre es obligatorio.";
+    if (!fields.apellido.trim()) e.apellido  = "El apellido es obligatorio.";
+    if (!/^\d{10}$/.test(fields.telefono)) e.telefono = "El teléfono debe tener exactamente 10 dígitos.";
+    if (!fields.email.trim())    e.email    = "El correo electrónico es obligatorio.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email)) e.email = "Ingresa un correo válido.";
+    if (!fields.password)        e.password = "La contraseña es obligatoria.";
+    else if (fields.password.length < 8) e.password = "La contraseña debe tener al menos 8 caracteres.";
+    return e;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const fieldErrors = validate();
+    if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
+
+    setIsPending(true);
+    setErrors({});
+    try {
+      await authService.register({ ...fields, nombre: fields.nombre.trim(), apellido: fields.apellido.trim(), id_rol: ROLES.CLIENT });
+      window.location.href = "/portal";
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        if (!err.response) {
+          setErrors({ general: "No se pudo conectar con el servidor. Verifica tu conexión." });
+        } else if (err.response.status === 409 || err.response.data?.message?.includes("already")) {
+          setErrors({ email: "Este correo ya está registrado. Intenta con otro." });
+        } else if (err.response.status === 400) {
+          setErrors({ general: "Datos inválidos. Revisa la información ingresada." });
+        } else {
+          setErrors({ general: `Error del servidor (${err.response.status}). Intenta de nuevo.` });
+        }
+      } else {
+        setErrors({ general: "Error inesperado. Intenta de nuevo." });
+      }
+      setIsPending(false);
+    }
+  };
+
+  const inputClass = (field: keyof FieldErrors) =>
+    `w-full px-4 py-2.5 bg-white border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all text-sm ${
+      errors[field]
+        ? "border-rose-400 focus:ring-rose-400"
+        : "border-slate-200 focus:ring-violet-500"
+    }`;
 
   return (
     <div className="min-h-screen flex">
@@ -95,35 +130,58 @@ export default function RegisterPage() {
             <p className="text-slate-500 mt-1">Comienza a descubrir y reservar servicios</p>
           </div>
 
-          {state?.error && <div className="mb-4"><ErrorBanner message={state.error} /></div>}
+          {errors.general && (
+            <div className="mb-4 rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">{errors.general}</div>
+          )}
 
-          <form action={action} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label htmlFor="nombre" className="block text-sm font-medium text-slate-700">Nombre</label>
-                <input id="nombre" name="nombre" type="text" placeholder="Juan"
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all text-sm" />
+                <input id="nombre" type="text" placeholder="Juan" value={fields.nombre} onChange={set("nombre")}
+                  className={inputClass("nombre")} />
+                {errors.nombre && <p className="text-xs text-rose-600">{errors.nombre}</p>}
               </div>
               <div className="space-y-1.5">
                 <label htmlFor="apellido" className="block text-sm font-medium text-slate-700">Apellido</label>
-                <input id="apellido" name="apellido" type="text" placeholder="García"
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all text-sm" />
+                <input id="apellido" type="text" placeholder="García" value={fields.apellido} onChange={set("apellido")}
+                  className={inputClass("apellido")} />
+                {errors.apellido && <p className="text-xs text-rose-600">{errors.apellido}</p>}
               </div>
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="telefono" className="block text-sm font-medium text-slate-700">Teléfono</label>
-              <input id="telefono" name="telefono" type="tel" placeholder="1234567890"
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all text-sm" />
+              <input
+                id="telefono" type="tel" placeholder="1234567890" value={fields.telefono}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                  setFields((prev) => ({ ...prev, telefono: val }));
+                  setErrors((prev) => ({ ...prev, telefono: undefined }));
+                }}
+                className={inputClass("telefono")}
+              />
+              {errors.telefono
+                ? <p className="text-xs text-rose-600">{errors.telefono}</p>
+                : <p className="text-xs text-slate-400">10 dígitos sin espacios ni guiones</p>
+              }
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="email" className="block text-sm font-medium text-slate-700">Correo electrónico</label>
-              <input id="email" name="email" type="email" placeholder="tu@correo.com"
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all text-sm" />
+              <input id="email" type="email" placeholder="tu@correo.com" value={fields.email} onChange={set("email")}
+                className={inputClass("email")} />
+              {errors.email && <p className="text-xs text-rose-600">{errors.email}</p>}
             </div>
 
-            <PasswordInput id="password" name="password" label="Contraseña" placeholder="Mínimo 8 caracteres" />
+            <div className="space-y-1.5">
+              <PasswordInput
+                id="password" name="password" label="Contraseña" placeholder="Mínimo 8 caracteres"
+                value={fields.password}
+                onChange={(e) => { setFields((p) => ({ ...p, password: e.target.value })); setErrors((p) => ({ ...p, password: undefined })); }}
+                error={errors.password}
+              />
+            </div>
 
             <p className="text-xs text-slate-400 leading-relaxed">
               Al registrarte, aceptas nuestros{" "}

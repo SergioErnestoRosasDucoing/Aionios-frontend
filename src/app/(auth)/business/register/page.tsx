@@ -1,36 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { useActionState } from "react";
 import { Check, Building2 } from "lucide-react";
 import AioniosLogo from "@/components/ui/AioniosLogo";
-import ErrorBanner from "@/components/ui/ErrorBanner";
 import PasswordInput from "@/components/ui/PasswordInput";
 import SubmitButton from "@/components/ui/SubmitButton";
 import { authService } from "@/services/auth.service";
 import { ROLES } from "@/types/auth.types";
+import axios from "axios";
 
-type FormState = { error: string } | null;
-
-async function registerAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const nombre   = formData.get("nombre")   as string;
-  const apellido = formData.get("apellido") as string;
-  const email    = formData.get("email")    as string;
-  const password = formData.get("password") as string;
-  const telefono = formData.get("telefono") as string;
-
-  if (!nombre || !apellido || !email || !password || !telefono) {
-    return { error: "Por favor completa todos los campos." };
-  }
-
-  try {
-    await authService.register({ nombre, apellido, email, password, telefono, id_rol: ROLES.BUSINESS_OWNER });
-    window.location.href = "/dashboard";
-    return null;
-  } catch {
-    return { error: "No se pudo crear la cuenta. El correo ya puede estar registrado." };
-  }
-}
+interface Fields { nombre: string; apellido: string; telefono: string; email: string; password: string }
+interface FieldErrors { nombre?: string; apellido?: string; telefono?: string; email?: string; password?: string; general?: string }
 
 const FEATURES = [
   "Panel de control con métricas en tiempo real",
@@ -41,7 +22,61 @@ const FEATURES = [
 ];
 
 export default function BusinessRegisterPage() {
-  const [state, action, isPending] = useActionState(registerAction, null);
+  const [fields, setFields] = useState<Fields>({ nombre: "", apellido: "", telefono: "", email: "", password: "" });
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [isPending, setIsPending] = useState(false);
+
+  const set = (key: keyof Fields) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFields((prev) => ({ ...prev, [key]: e.target.value }));
+    setErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
+
+  const validate = (): FieldErrors => {
+    const e: FieldErrors = {};
+    if (!fields.nombre.trim())   e.nombre   = "El nombre es obligatorio.";
+    if (!fields.apellido.trim()) e.apellido  = "El apellido es obligatorio.";
+    if (!/^\d{10}$/.test(fields.telefono)) e.telefono = "El teléfono debe tener exactamente 10 dígitos.";
+    if (!fields.email.trim())    e.email    = "El correo electrónico es obligatorio.";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email)) e.email = "Ingresa un correo válido.";
+    if (!fields.password)        e.password = "La contraseña es obligatoria.";
+    else if (fields.password.length < 8) e.password = "La contraseña debe tener al menos 8 caracteres.";
+    return e;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const fieldErrors = validate();
+    if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
+
+    setIsPending(true);
+    setErrors({});
+    try {
+      await authService.register({ ...fields, nombre: fields.nombre.trim(), apellido: fields.apellido.trim(), id_rol: ROLES.BUSINESS_OWNER });
+      window.location.href = "/dashboard";
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        if (!err.response) {
+          setErrors({ general: "No se pudo conectar con el servidor. Verifica tu conexión." });
+        } else if (err.response.status === 409 || err.response.data?.message?.includes("already")) {
+          setErrors({ email: "Este correo ya está registrado. Intenta con otro." });
+        } else if (err.response.status === 400) {
+          setErrors({ general: "Datos inválidos. Revisa la información ingresada." });
+        } else {
+          setErrors({ general: `Error del servidor (${err.response.status}). Intenta de nuevo.` });
+        }
+      } else {
+        setErrors({ general: "Error inesperado. Intenta de nuevo." });
+      }
+      setIsPending(false);
+    }
+  };
+
+  const inputClass = (field: keyof FieldErrors) =>
+    `w-full px-4 py-2.5 bg-white border rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:border-transparent transition-all text-sm ${
+      errors[field]
+        ? "border-rose-400 focus:ring-rose-400"
+        : "border-slate-200 focus:ring-amber-500"
+    }`;
 
   return (
     <div className="min-h-screen flex">
@@ -60,7 +95,7 @@ export default function BusinessRegisterPage() {
           <div className="space-y-3">
             <h1 className="text-4xl font-bold text-white leading-tight">
               Lleva tu negocio<br />
-              <span className="text-indigo-400">al siguiente nivel</span>
+              <span className="text-amber-400">al siguiente nivel</span>
             </h1>
             <p className="text-slate-400 text-lg">Gestiona todo desde un solo lugar. Gratis para empezar.</p>
           </div>
@@ -68,8 +103,8 @@ export default function BusinessRegisterPage() {
           <ul className="space-y-3">
             {FEATURES.map((f) => (
               <li key={f} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 bg-indigo-600/20 border-indigo-500/30">
-                  <Check className="w-3 h-3 text-indigo-400" strokeWidth={2.5} />
+                <div className="w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 bg-amber-600/20 border-amber-500/30">
+                  <Check className="w-3 h-3 text-amber-400" strokeWidth={2.5} />
                 </div>
                 <span className="text-slate-300 text-sm">{f}</span>
               </li>
@@ -96,59 +131,85 @@ export default function BusinessRegisterPage() {
           </div>
 
           <div className="mb-6 mt-8 lg:mt-0">
-            <div className="inline-flex items-center gap-2 bg-indigo-100 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-full mb-4">
-              <Building2 className="w-3.5 h-3.5" />
-              Cuenta de negocio
+            <div className="flex items-center gap-3 bg-amber-500 text-white px-4 py-3 rounded-2xl mb-5 shadow-sm shadow-amber-200">
+              <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-sm font-bold leading-tight">Portal de negocios</p>
+                <p className="text-amber-100 text-xs leading-tight">Gestiona tu negocio y citas</p>
+              </div>
             </div>
             <h2 className="text-2xl font-bold text-slate-900">Registra tu negocio</h2>
             <p className="text-slate-500 mt-1">Crea tu cuenta como dueño y empieza a gestionar</p>
           </div>
 
-          {state?.error && <div className="mb-4"><ErrorBanner message={state.error} /></div>}
+          {errors.general && (
+            <div className="mb-4 rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">{errors.general}</div>
+          )}
 
-          <form action={action} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label htmlFor="nombre" className="block text-sm font-medium text-slate-700">Nombre</label>
-                <input id="nombre" name="nombre" type="text" placeholder="Juan"
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm" />
+                <input id="nombre" type="text" placeholder="Juan" value={fields.nombre} onChange={set("nombre")}
+                  className={inputClass("nombre")} />
+                {errors.nombre && <p className="text-xs text-rose-600">{errors.nombre}</p>}
               </div>
               <div className="space-y-1.5">
                 <label htmlFor="apellido" className="block text-sm font-medium text-slate-700">Apellido</label>
-                <input id="apellido" name="apellido" type="text" placeholder="García"
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm" />
+                <input id="apellido" type="text" placeholder="García" value={fields.apellido} onChange={set("apellido")}
+                  className={inputClass("apellido")} />
+                {errors.apellido && <p className="text-xs text-rose-600">{errors.apellido}</p>}
               </div>
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="telefono" className="block text-sm font-medium text-slate-700">Teléfono</label>
-              <input id="telefono" name="telefono" type="tel" placeholder="1234567890"
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm" />
+              <input
+                id="telefono" type="tel" placeholder="1234567890" value={fields.telefono}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                  setFields((prev) => ({ ...prev, telefono: val }));
+                  setErrors((prev) => ({ ...prev, telefono: undefined }));
+                }}
+                className={inputClass("telefono")}
+              />
+              {errors.telefono
+                ? <p className="text-xs text-rose-600">{errors.telefono}</p>
+                : <p className="text-xs text-slate-400">10 dígitos sin espacios ni guiones</p>
+              }
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="email" className="block text-sm font-medium text-slate-700">Correo electrónico</label>
-              <input id="email" name="email" type="email" placeholder="tu@negocio.com"
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all text-sm" />
+              <input id="email" type="email" placeholder="tu@negocio.com" value={fields.email} onChange={set("email")}
+                className={inputClass("email")} />
+              {errors.email && <p className="text-xs text-rose-600">{errors.email}</p>}
             </div>
 
-            <PasswordInput id="password" name="password" label="Contraseña" placeholder="Mínimo 8 caracteres" />
+            <PasswordInput
+              id="password" name="password" label="Contraseña" placeholder="Mínimo 8 caracteres"
+              value={fields.password}
+              onChange={(e) => { setFields((p) => ({ ...p, password: e.target.value })); setErrors((p) => ({ ...p, password: undefined })); }}
+              error={errors.password}
+            />
 
             <p className="text-xs text-slate-400 leading-relaxed">
               Al registrarte, aceptas nuestros{" "}
-              <span className="text-indigo-600 cursor-pointer hover:underline">Términos de servicio</span>{" "}
+              <span className="text-amber-600 cursor-pointer hover:underline">Términos de servicio</span>{" "}
               y{" "}
-              <span className="text-indigo-600 cursor-pointer hover:underline">Política de privacidad</span>.
+              <span className="text-amber-600 cursor-pointer hover:underline">Política de privacidad</span>.
             </p>
 
-            <SubmitButton loading={isPending} loadingText="Creando cuenta..." colorScheme="indigo">
+            <SubmitButton loading={isPending} loadingText="Creando cuenta..." colorScheme="amber">
               Crear cuenta de negocio
             </SubmitButton>
           </form>
 
           <p className="mt-6 text-center text-sm text-slate-500">
             ¿Ya tienes cuenta?{" "}
-            <Link href="/business/login" className="text-indigo-600 hover:text-indigo-700 font-semibold">
+            <Link href="/business/login" className="text-amber-600 hover:text-amber-700 font-semibold">
               Inicia sesión
             </Link>
           </p>
