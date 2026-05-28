@@ -2,12 +2,10 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Bell, Search, Menu, CalendarDays } from "lucide-react";
+import { Search, Menu, Bell, X } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useMyBusiness } from "@/hooks/useMyBusiness";
-import { requestsService } from "@/services/requests.service";
-import type { Solicitud } from "@/types/request.types";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface HeaderProps { onMobileMenuOpen: () => void }
 
@@ -16,52 +14,24 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
   const { user, logout } = useAuth();
   const { business } = useMyBusiness();
 
-  const [showNotif, setShowNotif] = useState(false);
   const [showUser,  setShowUser]  = useState(false);
-  const [pending,   setPending]   = useState<Solicitud[]>([]);
-  const [badgeVisible, setBadgeVisible] = useState(false);
-
-  const notifRef = useRef<HTMLDivElement>(null);
+  const [showNotif, setShowNotif] = useState(false);
   const userRef  = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  const { notifications, unread, remove } = useNotifications(user?.id);
 
   const initial     = user?.nombre?.charAt(0).toUpperCase() ?? "U";
   const displayName = business?.nombre ?? `${user?.nombre ?? ""} ${user?.apellido ?? ""}`.trim();
 
-  // Fetch pending requests — también re-fetcha cuando la pestaña vuelve a estar visible
-  const fetchPending = () => {
-    if (!business) return;
-    requestsService.getByNegocio(business.id)
-      .then((reqs) => {
-        const pendientes = reqs.filter((r) => r.estado === "PENDIENTE");
-        setPending(pendientes);
-        setBadgeVisible(pendientes.length > 0);
-      })
-      .catch(() => {});
-  };
-
-  useEffect(() => {
-    fetchPending();
-  }, [business]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    const onVisible = () => { if (document.visibilityState === "visible") fetchPending(); };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [business]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Close on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotif(false);
       if (userRef.current  && !userRef.current.contains(e.target as Node))  setShowUser(false);
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotif(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const handleOpenNotif = () => {
-    setShowNotif((v) => !v);
-  };
 
   const handleLogout = () => { logout(); router.push("/business/login"); };
 
@@ -87,17 +57,17 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         {/* Notificaciones */}
         <div ref={notifRef} className="relative">
           <button
-            onClick={handleOpenNotif}
+            onClick={() => setShowNotif((v) => !v)}
             className="relative w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <Bell className="w-4 h-4 text-slate-600" />
-            {badgeVisible && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-indigo-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-                {pending.length > 9 ? "9+" : pending.length}
+            {unread > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-indigo-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                {unread > 99 ? "99+" : unread}
               </span>
             )}
           </button>
@@ -106,61 +76,56 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
             <div className="absolute right-0 top-11 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden z-50">
               <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
                 <p className="text-sm font-semibold text-slate-900">Notificaciones</p>
-                {pending.length > 0 && (
-                  <span className="text-xs text-indigo-600 font-medium">{pending.length} pendiente{pending.length !== 1 ? "s" : ""}</span>
+                {unread > 0 && (
+                  <span className="text-xs text-indigo-600 font-medium">{unread} nueva{unread !== 1 ? "s" : ""}</span>
                 )}
               </div>
 
-              {pending.length === 0 ? (
+              {notifications.length === 0 ? (
                 <div className="px-4 py-8 text-center">
                   <Bell className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                  <p className="text-sm text-slate-500">No tienes solicitudes pendientes</p>
+                  <p className="text-sm text-slate-500">No tienes notificaciones</p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
-                  {pending.map((req) => (
-                    <Link
-                      key={req.id}
-                      href="/dashboard/requests"
-                      onClick={() => setShowNotif(false)}
-                      className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
+                <ul className="max-h-80 overflow-y-auto divide-y divide-slate-50">
+                  {notifications.map((n) => (
+                    <li
+                      key={n._id}
+                      className={`group relative flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors ${
+                        !n.leido ? "bg-indigo-50/40" : ""
+                      }`}
                     >
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <CalendarDays className="w-4 h-4 text-indigo-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-900 truncate">
-                          {req.usuario.nombre} {req.usuario.apellido}
-                        </p>
-                        <p className="text-xs text-slate-500">Solicitud de cita pendiente</p>
-                        <p className="text-xs text-indigo-600 mt-0.5">
-                          {new Date(req.fecha_hora_propuesta).toLocaleDateString("es-MX", {
-                            weekday: "short", day: "numeric", month: "short",
-                          })}{" · "}
-                          {new Date(req.fecha_hora_propuesta).toLocaleTimeString("es-MX", {
-                            hour: "2-digit", minute: "2-digit",
+                      {/* Indicador no leído */}
+                      {!n.leido && (
+                        <span className="mt-1.5 flex-shrink-0 w-2 h-2 rounded-full bg-indigo-500" />
+                      )}
+                      {n.leido && <span className="mt-1.5 flex-shrink-0 w-2 h-2" />}
+
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800 truncate">{n.titulo}</p>
+                        <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{n.mensaje}</p>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {new Date(n.createdAt).toLocaleString("es-MX", {
+                            day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
                           })}
                         </p>
                       </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
 
-              <div className="px-4 py-2.5 border-t border-slate-100">
-                <Link
-                  href="/dashboard/requests"
-                  onClick={() => setShowNotif(false)}
-                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-                >
-                  Ver todas las solicitudes →
-                </Link>
-              </div>
+                      {/* Botón eliminar — visible al hover */}
+                      <button
+                        onClick={() => remove(n._id)}
+                        className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-slate-200 cursor-pointer"
+                        title="Eliminar notificación"
+                      >
+                        <X className="w-3.5 h-3.5 text-slate-500" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </div>
-
-        <div className="w-px h-6 bg-slate-200" />
 
         {/* Usuario con dropdown */}
         <div ref={userRef} className="relative">
