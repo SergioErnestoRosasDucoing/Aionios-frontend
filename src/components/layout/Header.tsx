@@ -2,11 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, Menu } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useMyBusiness } from "@/hooks/useMyBusiness";
 
-export default function Header() {
+interface HeaderProps { onMobileMenuOpen: () => void }
+
+export default function Header({ onMobileMenuOpen }: HeaderProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const { business } = useMyBusiness();
@@ -33,15 +35,25 @@ export default function Header() {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 flex-shrink-0">
-      {/* Busqueda */}
-      <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 w-72">
-        <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
-        <input
-          type="text"
-          placeholder="Buscar..."
-          className="bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none w-full"
-        />
+    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
+      <div className="flex items-center gap-3">
+        {/* Hamburger — solo móvil */}
+        <button
+          onClick={onMobileMenuOpen}
+          className="lg:hidden w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors cursor-pointer flex-shrink-0"
+        >
+          <Menu className="w-4 h-4 text-slate-600" />
+        </button>
+
+        {/* Busqueda */}
+        <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 w-44 sm:w-72">
+          <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
+          <input
+            type="text"
+            placeholder="Buscar..."
+            className="bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none w-full"
+          />
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
