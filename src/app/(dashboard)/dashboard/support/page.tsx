@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import {
   HeadphonesIcon, Plus, Search, Clock, CheckCircle,
   MessageSquare, ChevronRight, X, Send, ChevronLeft,
@@ -69,6 +69,48 @@ export default function SupportPage() {
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
 
+  const ticketScrollRef = useRef<HTMLDivElement>(null);
+  const ticketBottomRef = useRef<HTMLDivElement>(null);
+  const ticketMsgCountRef = useRef(0);
+
+  // Polling del ticket seleccionado: detecta respuestas del admin en tiempo real
+  useEffect(() => {
+    if (!selected) return;
+    ticketMsgCountRef.current = selected.mensajes.length;
+    let alive = true;
+
+    const poll = async () => {
+      if (!alive || document.hidden) return;
+      try {
+        const fresh = await ticketsService.getOne(selected._id);
+        if (fresh && fresh.mensajes.length !== ticketMsgCountRef.current) {
+          ticketMsgCountRef.current = fresh.mensajes.length;
+          setSelected(fresh);
+          setTickets((prev) => prev.map((t) => t._id === fresh._id ? fresh : t));
+        }
+      } catch { /* silencioso */ }
+    };
+
+    const id = setInterval(poll, 3_000);
+    const onVisibility = () => { if (!document.hidden) poll(); };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      alive = false;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [selected?._id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-scroll al fondo cuando llegan mensajes nuevos
+  useEffect(() => {
+    if (!selected) return;
+    const box = ticketScrollRef.current;
+    if (!box) return;
+    const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+    if (nearBottom) ticketBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [selected?.mensajes.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     ticketsService.getMine()
       .then(setTickets)
@@ -118,7 +160,9 @@ export default function SupportPage() {
       );
       setTickets((prev) => prev.map((t) => t._id === updated._id ? updated : t));
       setSelected(updated);
+      ticketMsgCountRef.current = updated.mensajes.length;
       setReplyText("");
+      setTimeout(() => ticketBottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     } catch {} finally {
       setSending(false);
     }
@@ -164,7 +208,14 @@ export default function SupportPage() {
           </div>
 
           {/* Mensajes */}
-          <div className="space-y-3 max-h-96 overflow-y-auto mb-4">
+          <div className="flex items-center gap-1.5 mb-3">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            <span className="text-[10px] text-slate-400 font-medium">En vivo · actualiza cada 3 s</span>
+          </div>
+          <div ref={ticketScrollRef} className="space-y-3 max-h-96 overflow-y-auto mb-4">
             {selected.mensajes.length === 0 && (
               <p className="text-xs text-slate-400 text-center py-4">Sin mensajes aún.</p>
             )}
@@ -177,6 +228,7 @@ export default function SupportPage() {
                 <p className="text-sm text-slate-600 bg-slate-50 rounded-xl px-3 py-2">{m.texto}</p>
               </div>
             ))}
+            <div ref={ticketBottomRef} />
           </div>
 
           {/* Respuesta */}

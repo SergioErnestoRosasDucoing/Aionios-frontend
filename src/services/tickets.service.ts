@@ -32,6 +32,11 @@ export const ticketsService = {
     return data;
   },
 
+  async getOne(id: string): Promise<Ticket> {
+    const { data } = await apiClient.get<Ticket>(`/support-tickets/${id}`);
+    return data;
+  },
+
   async getAll(): Promise<Ticket[]> {
     const { data } = await apiClient.get<Ticket[]>("/support-tickets");
     return data;

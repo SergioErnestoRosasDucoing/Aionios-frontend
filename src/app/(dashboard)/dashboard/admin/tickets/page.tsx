@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import {
   Ticket, Search, Clock, CheckCircle,
   MessageSquare, ChevronRight, ChevronLeft,
@@ -64,6 +64,8 @@ function StatsBar({ tickets }: { tickets: TicketType[] }) {
 }
 
 /* ── Vista detalle ────────────────────────────────────────── */
+const TICKET_POLL_MS = 3_000;
+
 function TicketDetail({
   ticket,
   onBack,
@@ -78,6 +80,50 @@ function TicketDetail({
   const [sending,   setSending]   = useState(false);
   const [acting,    setActing]    = useState(false);
 
+  const bottomRef     = useRef<HTMLDivElement>(null);
+  const scrollBoxRef  = useRef<HTMLDivElement>(null);
+  const lastCountRef  = useRef<number>(ticket.mensajes.length);
+  const onUpdatedRef  = useRef(onUpdated);
+  onUpdatedRef.current = onUpdated;
+
+  // ── Polling: re-fetch el ticket cada 3 s ──────────────────────────────────
+  useEffect(() => {
+    lastCountRef.current = ticket.mensajes.length;
+  }, [ticket.mensajes.length]);
+
+  useEffect(() => {
+    let alive = true;
+
+    const poll = async () => {
+      if (!alive || document.hidden) return;
+      try {
+        const fresh = await ticketsService.getOne(ticket._id);
+        if (fresh && fresh.mensajes.length !== lastCountRef.current) {
+          lastCountRef.current = fresh.mensajes.length;
+          onUpdatedRef.current(fresh);
+        }
+      } catch { /* silencioso */ }
+    };
+
+    const id = setInterval(poll, TICKET_POLL_MS);
+    const onVisibility = () => { if (!document.hidden) poll(); };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      alive = false;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [ticket._id]); // solo se recrea si cambia el ticket abierto
+
+  // Auto-scroll cuando llegan mensajes nuevos
+  useEffect(() => {
+    const box = scrollBoxRef.current;
+    if (!box) return;
+    const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+    if (nearBottom) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [ticket.mensajes.length]);
+
   const s = STATUS_CONFIG[ticket.estado] ?? STATUS_CONFIG.abierto;
   const p = PRIORITY_CONFIG[ticket.prioridad ?? "media"];
 
@@ -91,8 +137,10 @@ function TicketDetail({
         user.id,
         `${user.nombre} ${user.apellido ?? ""}`.trim(),
       );
-      onUpdated(updated);
+      onUpdatedRef.current(updated);
       setReplyText("");
+      // Scroll forzado al enviar
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     } catch { /* silencioso */ }
     finally { setSending(false); }
   };
@@ -141,7 +189,14 @@ function TicketDetail({
         </div>
 
         {/* Mensajes */}
-        <div className="space-y-3 max-h-96 overflow-y-auto mb-4 border-t border-slate-100 pt-4">
+        <div className="flex items-center gap-1.5 mb-3">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+          <span className="text-[10px] text-slate-400 font-medium">En vivo · actualiza cada 3 s</span>
+        </div>
+        <div ref={scrollBoxRef} className="space-y-3 max-h-96 overflow-y-auto mb-4 border-t border-slate-100 pt-4">
           {ticket.mensajes.length === 0 ? (
             <p className="text-xs text-slate-400 text-center py-4">Sin mensajes aún.</p>
           ) : (
@@ -168,6 +223,7 @@ function TicketDetail({
               );
             })
           )}
+          <div ref={bottomRef} />
         </div>
 
         {/* Responder */}

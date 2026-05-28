@@ -5,7 +5,7 @@ import { Send, Loader2, MessageSquare } from "lucide-react";
 import { requestsService } from "@/services/requests.service";
 import type { RequestMessage } from "@/types/request.types";
 
-const POLL_INTERVAL = 3_000; // 3 s cuando el tab está activo
+const POLL_MS = 3_000;
 
 interface Props {
   solicitudId: number;
@@ -32,10 +32,10 @@ export default function RequestChat({ solicitudId, autorId, autorNombre, autorTi
 
   const bottomRef    = useRef<HTMLDivElement>(null);
   const scrollBoxRef = useRef<HTMLDivElement>(null);
-  const lastIdRef    = useRef<string | null>(null); // evita re-renders sin mensajes nuevos
-  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Guardamos el último ID conocido para no re-renderizar si no hay mensajes nuevos
+  const lastIdRef    = useRef<string | null>(null);
 
-  // ── Scroll inteligente: solo baja si ya estás cerca del fondo ─────────────
+  // ── Scroll inteligente: baja sólo si ya estás cerca del fondo ─────────────
   const scrollToBottom = useCallback((force = false) => {
     const box = scrollBoxRef.current;
     if (!box) return;
@@ -45,8 +45,12 @@ export default function RequestChat({ solicitudId, autorId, autorNombre, autorTi
     }
   }, []);
 
-  // ── Fetch de mensajes: solo actualiza estado si hay algo nuevo ────────────
-  const fetchMessages = useCallback(async () => {
+  // ── Polling con ref para evitar stale closures ─────────────────────────────
+  // La idea: el setInterval llama siempre a `pollRef.current`, que apunta
+  // a la versión actualizada de la función sin recrear el intervalo.
+  const pollRef = useRef<() => Promise<void>>();
+
+  pollRef.current = async () => {
     try {
       const data = await requestsService.getMensajes(solicitudId);
       const newLastId = data.at(-1)?._id ?? null;
@@ -55,45 +59,35 @@ export default function RequestChat({ solicitudId, autorId, autorNombre, autorTi
         setMessages(data);
       }
     } catch { /* silencioso */ }
-  }, [solicitudId]);
-
-  // ── Polling: activo solo cuando el tab es visible ─────────────────────────
-  const startPolling = useCallback(() => {
-    if (intervalRef.current) return;
-    intervalRef.current = setInterval(fetchMessages, POLL_INTERVAL);
-  }, [fetchMessages]);
-
-  const stopPolling = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  }, []);
+  };
 
   useEffect(() => {
+    let alive = true;
+
+    const poll = () => { if (alive) pollRef.current?.(); };
+
     // Carga inicial
     setLoading(true);
-    fetchMessages().finally(() => setLoading(false));
+    poll();
+    // Pequeño retraso para que la primera carga se vea antes de mostrar el spinner
+    Promise.resolve().then(() => { if (alive) setLoading(false); });
 
-    startPolling();
+    const id = setInterval(poll, POLL_MS);
 
-    const handleVisibility = () => {
-      if (document.hidden) {
-        stopPolling();
-      } else {
-        fetchMessages(); // refresco inmediato al volver
-        startPolling();
-      }
+    // Pausa cuando el tab está oculto; refresco inmediato al volver
+    const onVisibility = () => {
+      if (!document.hidden) poll();
     };
+    document.addEventListener("visibilitychange", onVisibility);
 
-    document.addEventListener("visibilitychange", handleVisibility);
     return () => {
-      stopPolling();
-      document.removeEventListener("visibilitychange", handleVisibility);
+      alive = false;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [fetchMessages, startPolling, stopPolling]);
+  }, [solicitudId]); // sólo se recrea si cambia el ID de la solicitud
 
-  // ── Auto-scroll solo cuando llegan mensajes nuevos ────────────────────────
+  // Scroll cuando llegan mensajes nuevos
   useEffect(() => {
     if (!loading) scrollToBottom();
   }, [messages, loading, scrollToBottom]);
@@ -103,23 +97,20 @@ export default function RequestChat({ solicitudId, autorId, autorNombre, autorTi
     const trimmed = text.trim();
     if (!trimmed || sending) return;
 
-    // Mensaje optimista con ID temporal
     const tempId = `tmp_${Date.now()}`;
     const optimistic: RequestMessage = {
-      _id:         tempId,
+      _id:          tempId,
       solicitud_id: solicitudId,
-      autor_id:    autorId,
+      autor_id:     autorId,
       autor_nombre: autorNombre,
-      autor_tipo:  autorTipo,
-      texto:       trimmed,
-      createdAt:   new Date().toISOString(),
+      autor_tipo:   autorTipo,
+      texto:        trimmed,
+      createdAt:    new Date().toISOString(),
     };
 
     setMessages((prev) => [...prev, optimistic]);
     setText("");
     setSending(true);
-
-    // Scroll forzado al enviar
     setTimeout(() => scrollToBottom(true), 50);
 
     try {
@@ -129,14 +120,13 @@ export default function RequestChat({ solicitudId, autorId, autorNombre, autorTi
         autor_tipo:   autorTipo,
         texto:        trimmed,
       });
-
-      // Reemplaza el mensaje optimista con el real del servidor
+      // Reemplaza el optimista con el real y actualiza el lastId
       setMessages((prev) => prev.map((m) => (m._id === tempId ? real : m)));
       lastIdRef.current = real._id;
     } catch {
-      // Revierte el mensaje optimista si falla
+      // Revierte si falla
       setMessages((prev) => prev.filter((m) => m._id !== tempId));
-      setText(trimmed); // devuelve el texto al input
+      setText(trimmed);
     } finally {
       setSending(false);
     }
@@ -148,13 +138,13 @@ export default function RequestChat({ solicitudId, autorId, autorNombre, autorTi
 
   return (
     <div className="flex flex-col h-full">
-      {/* Indicador "en vivo" */}
+      {/* Indicador en vivo */}
       <div className="flex items-center gap-1.5 px-1 mb-2">
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
         </span>
-        <span className="text-[10px] text-slate-400 font-medium">En vivo</span>
+        <span className="text-[10px] text-slate-400 font-medium">En vivo · actualiza cada 3 s</span>
       </div>
 
       {/* Mensajes */}
@@ -175,8 +165,8 @@ export default function RequestChat({ solicitudId, autorId, autorNombre, autorTi
           </div>
         ) : (
           messages.map((m) => {
-            const isMe    = m.autor_id === autorId;
-            const isTemp  = m._id.startsWith("tmp_");
+            const isMe   = m.autor_id === autorId;
+            const isTemp = m._id.startsWith("tmp_");
             return (
               <div key={m._id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[80%] space-y-0.5 ${isMe ? "items-end" : "items-start"} flex flex-col`}>
@@ -185,15 +175,13 @@ export default function RequestChat({ solicitudId, autorId, autorNombre, autorTi
                       {m.autor_nombre} · {m.autor_tipo === "negocio" ? "Negocio" : "Cliente"}
                     </p>
                   )}
-                  <div
-                    className={`px-3 py-2 rounded-2xl text-sm leading-snug transition-opacity ${
-                      isTemp ? "opacity-60" : "opacity-100"
-                    } ${
-                      isMe
-                        ? "bg-indigo-600 text-white rounded-br-sm"
-                        : "bg-slate-100 text-slate-800 rounded-bl-sm"
-                    }`}
-                  >
+                  <div className={`px-3 py-2 rounded-2xl text-sm leading-snug transition-opacity ${
+                    isTemp ? "opacity-60" : "opacity-100"
+                  } ${
+                    isMe
+                      ? "bg-indigo-600 text-white rounded-br-sm"
+                      : "bg-slate-100 text-slate-800 rounded-bl-sm"
+                  }`}>
                     {m.texto}
                   </div>
                   <p className="text-[10px] text-slate-400 px-1">
