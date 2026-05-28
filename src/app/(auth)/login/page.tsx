@@ -111,7 +111,7 @@ export default function LoginPage() {
               <User className="w-3.5 h-3.5" />
               Portal de clientes
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">Bienvenido de nuevo</h2>
+            <h2 className="text-2xl font-bold text-slate-900">¡Bienvenido!</h2>
             <p className="text-slate-500 mt-1">Inicia sesión para gestionar tus citas y explorar negocios</p>
           </div>
 

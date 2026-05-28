@@ -24,7 +24,7 @@ export const businessService = {
   },
 
   async getBySlug(slug: string): Promise<Business> {
-    const { data } = await apiClient.get<Business>(`/business/slug/${slug}`);
+    const { data } = await apiClient.get<Business>(`/business/${slug}`);
     return data;
   },
 

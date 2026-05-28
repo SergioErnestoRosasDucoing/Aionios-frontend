@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MapPin, Phone, ChevronLeft, CheckCircle, CalendarDays, Clock } from "lucide-react";
 import { businessService } from "@/services/business.service";
@@ -97,7 +96,10 @@ export default function BusinessDetailPage() {
         setUiConfig(uiData);
         if (svcData.length > 0) setSelectedSvc(svcData[0]._id);
       })
-      .catch(() => setNotFoundError(true))
+      .catch((err) => {
+        console.error("[negocio] Error cargando slug:", slug, err?.response?.status, err?.response?.data);
+        setNotFoundError(true);
+      })
       .finally(() => setLoading(false));
   }, [slug]);
 
@@ -154,8 +156,6 @@ export default function BusinessDetailPage() {
     }
   };
 
-  if (notFoundError) notFound();
-
   if (loading) {
     return (
       <div className="max-w-5xl mx-auto space-y-6 animate-pulse">
@@ -172,7 +172,21 @@ export default function BusinessDetailPage() {
     );
   }
 
-  if (!biz) return null;
+  if (notFoundError || !biz) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-4">
+        <Link href="/portal/explorar" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition-colors">
+          <ChevronLeft className="w-4 h-4" />
+          Volver a explorar
+        </Link>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <p className="text-5xl mb-4">🏪</p>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Negocio no encontrado</h2>
+          <p className="text-slate-500 text-sm">Este negocio no existe o la URL es incorrecta.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
