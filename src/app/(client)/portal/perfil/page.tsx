@@ -14,7 +14,7 @@ import type { Review } from "@/types/review.types";
 
 // ── Notification prefs stored in localStorage ──────────────────────────────
 const NOTIF_KEY = "aionios_notif_prefs";
-interface NotifPrefs { email: boolean; push: boolean; recordatorios: boolean }
+interface NotifPrefs { email?: boolean; push: boolean; recordatorios: boolean }
 function loadNotifPrefs(): NotifPrefs {
   try { return JSON.parse(localStorage.getItem(NOTIF_KEY) ?? "{}"); } catch { return {} as NotifPrefs; }
 }
@@ -37,7 +37,6 @@ export default function PerfilPage() {
 
   // ── notifications panel ──────────────────────────────────────────────────
   const [showNotif,   setShowNotif]   = useState(false);
-  const [notifEmail,  setNotifEmail]  = useState(true);
   const [notifPush,   setNotifPush]   = useState(false);
   const [notifRecord, setNotifRecord] = useState(true);
   const [notifSaved,  setNotifSaved]  = useState(false);
@@ -69,7 +68,6 @@ export default function PerfilPage() {
     });
 
     const prefs = loadNotifPrefs();
-    setNotifEmail(prefs.email  ?? true);
     setNotifPush( prefs.push   ?? false);
     setNotifRecord(prefs.recordatorios ?? true);
   }, []);
@@ -106,7 +104,7 @@ export default function PerfilPage() {
   };
 
   const saveNotifPrefs = () => {
-    const prefs: NotifPrefs = { email: notifEmail, push: notifPush, recordatorios: notifRecord };
+    const prefs: NotifPrefs = { email: false, push: notifPush, recordatorios: notifRecord };
     localStorage.setItem(NOTIF_KEY, JSON.stringify(prefs));
     setNotifSaved(true);
     setTimeout(() => setNotifSaved(false), 2000);
@@ -248,9 +246,8 @@ export default function PerfilPage() {
         {showNotif && (
           <div className="px-5 pb-5 border-t border-slate-100 pt-4 space-y-4">
             {[
-              { label: "Notificaciones por correo", sub: "Recibe confirmaciones y recordatorios", value: notifEmail, set: setNotifEmail },
-              { label: "Notificaciones push",        sub: "Alertas en el navegador",               value: notifPush,  set: setNotifPush  },
-              { label: "Recordatorios de citas",     sub: "24 horas antes de tu cita",             value: notifRecord,set: setNotifRecord },
+              { label: "Notificaciones push",    sub: "Alertas en el navegador",   value: notifPush,   set: setNotifPush   },
+              { label: "Recordatorios de citas", sub: "24 horas antes de tu cita", value: notifRecord, set: setNotifRecord },
             ].map(({ label, sub, value, set }) => (
               <div key={label} className="flex items-center justify-between gap-4">
                 <div>
