@@ -56,7 +56,7 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
         {/* Notificaciones */}
         <NotificationBell
           usuarioId={user?.id}
-          citasHref="/dashboard/solicitudes"
+          citasHref="/dashboard/requests"
           citasLabel="Ver solicitudes"
         />
 
