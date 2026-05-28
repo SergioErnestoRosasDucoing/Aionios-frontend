@@ -15,7 +15,6 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  ShieldCheck,
   Ticket,
 } from "lucide-react";
 import AioniosLogo from "@/components/ui/AioniosLogo";
@@ -35,8 +34,7 @@ const businessNavItems = [
 ];
 
 const adminNavItems = [
-  { label: "Panel de administración", href: "/dashboard/admin",         icon: ShieldCheck },
-  { label: "Gestión de tickets",      href: "/dashboard/admin/tickets", icon: Ticket      },
+  { label: "Gestión de tickets", href: "/dashboard/admin/tickets", icon: Ticket },
 ];
 
 interface SidebarProps {

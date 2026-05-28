@@ -5,8 +5,10 @@ import {
   HeadphonesIcon, Plus, Search, Clock, CheckCircle,
   MessageSquare, ChevronRight, X, Send, ChevronLeft,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { ticketsService } from "@/services/tickets.service";
 import { useAuth } from "@/context/AuthContext";
+import { ROLES } from "@/types/auth.types";
 import type { Ticket, TicketEstado, TicketPrioridad, CreateTicketPayload } from "@/types/ticket.types";
 
 const statusConfig: Record<TicketEstado, { label: string; classes: string; icon: ReactNode }> = {
@@ -44,6 +46,15 @@ const EMPTY_FORM: CreateTicketPayload = {
 
 export default function SupportPage() {
   const { user } = useAuth();
+  const router = useRouter();
+
+  // Superadmin no usa esta página — tiene su propio panel
+  useEffect(() => {
+    if (user && user.id_rol === ROLES.SUPERADMIN) {
+      router.replace("/dashboard/admin/tickets");
+    }
+  }, [user, router]);
+
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
