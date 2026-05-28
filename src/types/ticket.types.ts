@@ -1,4 +1,4 @@
-export type TicketEstado = "abierto" | "en_proceso" | "resuelto";
+export type TicketEstado = "abierto" | "resuelto";
 export type TicketPrioridad = "baja" | "media" | "alta";
 
 export interface TicketMensaje {

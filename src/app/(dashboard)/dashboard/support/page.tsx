@@ -2,7 +2,7 @@
 
 import { useState, useEffect, type ReactNode } from "react";
 import {
-  HeadphonesIcon, Plus, Search, Clock, CheckCircle, AlertCircle,
+  HeadphonesIcon, Plus, Search, Clock, CheckCircle,
   MessageSquare, ChevronRight, X, Send, ChevronLeft,
 } from "lucide-react";
 import { ticketsService } from "@/services/tickets.service";
@@ -10,9 +10,8 @@ import { useAuth } from "@/context/AuthContext";
 import type { Ticket, TicketEstado, TicketPrioridad, CreateTicketPayload } from "@/types/ticket.types";
 
 const statusConfig: Record<TicketEstado, { label: string; classes: string; icon: ReactNode }> = {
-  abierto:    { label: "Abierto",    classes: "bg-amber-50 text-amber-700 border-amber-200",   icon: <Clock className="w-3 h-3" /> },
-  en_proceso: { label: "En proceso", classes: "bg-indigo-50 text-indigo-700 border-indigo-200", icon: <AlertCircle className="w-3 h-3" /> },
-  resuelto:   { label: "Resuelto",   classes: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: <CheckCircle className="w-3 h-3" /> },
+  abierto:  { label: "Abierto",  classes: "bg-amber-50 text-amber-700 border-amber-200",       icon: <Clock className="w-3 h-3" /> },
+  resuelto: { label: "Resuelto", classes: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: <CheckCircle className="w-3 h-3" /> },
 };
 
 const priorityConfig: Record<TicketPrioridad, { label: string; dot: string }> = {
@@ -23,9 +22,8 @@ const priorityConfig: Record<TicketPrioridad, { label: string; dot: string }> = 
 
 const CATEGORIAS = ["Cuenta", "Pagos", "Servicios", "Notificaciones", "Funcionalidad", "General"];
 const FILTROS: { label: string; value: TicketEstado | "todos" }[] = [
-  { label: "Todos", value: "todos" },
-  { label: "Abiertos", value: "abierto" },
-  { label: "En proceso", value: "en_proceso" },
+  { label: "Todos",     value: "todos"    },
+  { label: "Abiertos",  value: "abierto"  },
   { label: "Resueltos", value: "resuelto" },
 ];
 
