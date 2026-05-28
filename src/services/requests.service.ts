@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/axios";
-import type { Solicitud, SolicitudCliente, CreateSolicitudPayload, EstadoSolicitud } from "@/types/request.types";
+import type { Solicitud, SolicitudCliente, CreateSolicitudPayload, EstadoSolicitud, RequestMessage } from "@/types/request.types";
 
 export const requestsService = {
   async getMine(): Promise<SolicitudCliente[]> {
@@ -24,5 +24,18 @@ export const requestsService = {
 
   async remove(id: number): Promise<void> {
     await apiClient.delete(`/requests/${id}`);
+  },
+
+  async getMensajes(id: number): Promise<RequestMessage[]> {
+    const { data } = await apiClient.get<RequestMessage[]>(`/requests/${id}/mensajes`);
+    return data;
+  },
+
+  async addMensaje(
+    id: number,
+    payload: { autor_id: number; autor_nombre: string; autor_tipo: "cliente" | "negocio"; texto: string },
+  ): Promise<RequestMessage> {
+    const { data } = await apiClient.post<RequestMessage>(`/requests/${id}/mensaje`, payload);
+    return data;
   },
 };

@@ -57,3 +57,13 @@ export interface Bloqueo {
   hora_fin: string;
   motivo?: string;
 }
+
+export interface RequestMessage {
+  _id: string;
+  solicitud_id: number;
+  autor_id: number;
+  autor_nombre: string;
+  autor_tipo: "cliente" | "negocio";
+  texto: string;
+  createdAt: string;
+}

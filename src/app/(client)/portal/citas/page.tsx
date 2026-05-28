@@ -5,10 +5,11 @@ import Link from "next/link";
 import {
   CalendarDays, Plus, Clock, CheckCircle, XCircle,
   MapPin, ChevronRight, Loader2, CreditCard, X,
-  DollarSign, Banknote, Smartphone, Star,
+  DollarSign, Banknote, Smartphone, Star, MessageSquare,
 } from "lucide-react";
 import { requestsService } from "@/services/requests.service";
 import { servicesService } from "@/services/services.service";
+import RequestChat from "@/components/ui/RequestChat";
 import { paymentsService } from "@/services/payments.service";
 import { reviewsService } from "@/services/reviews.service";
 import { useAuth } from "@/context/AuthContext";
@@ -48,6 +49,7 @@ function isPaid(cita: SolicitudCliente) {
 
 interface PayModal  { cita: SolicitudCliente; precio: number; }
 interface RevModal  { cita: SolicitudCliente; }
+interface ChatModal { cita: SolicitudCliente; }
 
 function StarPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   const [hover, setHover] = useState(0);
@@ -91,6 +93,9 @@ export default function CitasPage() {
 
   // Review modal
   const [revModal,  setRevModal]  = useState<RevModal | null>(null);
+
+  // Chat modal (a_convenir)
+  const [chatModal, setChatModal] = useState<ChatModal | null>(null);
   const [rating,    setRating]    = useState(5);
   const [comentario,setComentario]= useState("");
   const [reviewing, setReviewing] = useState(false);
@@ -232,13 +237,14 @@ export default function CitasPage() {
       ) : (
         <div className="space-y-3">
           {displayed.map((cita) => {
-            const cfg       = ESTADO_CONFIG[cita.estado];
-            const Icon      = cfg.icon;
-            const paid      = isPaid(cita);
-            const svc       = serviceFor(cita.id_servicio_nosql);
-            const myReview  = reviewFor(cita.id_negocio);
-            const isPast    = !isUpcoming(cita.fecha_hora_propuesta);
-            const canReview = isPast && cita.estado === "CONFIRMADA" && !myReview;
+            const cfg        = ESTADO_CONFIG[cita.estado];
+            const Icon       = cfg.icon;
+            const paid       = isPaid(cita);
+            const svc        = serviceFor(cita.id_servicio_nosql);
+            const myReview   = reviewFor(cita.id_negocio);
+            const isPast     = !isUpcoming(cita.fecha_hora_propuesta);
+            const canReview  = isPast && cita.estado === "CONFIRMADA" && !myReview;
+            const isConvenir = svc?.unidadDuracion === "a_convenir";
 
             return (
               <div key={cita.id} className="bg-white rounded-2xl border border-slate-200 p-5 flex items-center gap-4">
@@ -278,6 +284,17 @@ export default function CitasPage() {
                     <Icon className="w-3 h-3" />
                     {cfg.label}
                   </span>
+
+                  {/* Chat para a_convenir */}
+                  {isConvenir && cita.estado !== "CANCELADA" && (
+                    <button
+                      onClick={() => setChatModal({ cita })}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <MessageSquare className="w-3 h-3" />
+                      Coordinar
+                    </button>
+                  )}
 
                   {/* Pay button — solo en citas futuras/confirmadas sin pago */}
                   {cita.estado === "CONFIRMADA" && !isPast && !paid && (
@@ -402,6 +419,31 @@ export default function CitasPage() {
               >
                 {paying ? "Guardando..." : "Confirmar pago"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Chat modal (a_convenir) ── */}
+      {chatModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Coordinar cita</h2>
+                <p className="text-xs text-slate-500 mt-0.5">{chatModal.cita.negocio.nombre}</p>
+              </div>
+              <button onClick={() => setChatModal(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden p-5">
+              <RequestChat
+                solicitudId={chatModal.cita.id}
+                autorId={user!.id}
+                autorNombre={`${user!.nombre} ${user!.apellido ?? ""}`.trim()}
+                autorTipo="cliente"
+              />
             </div>
           </div>
         </div>
