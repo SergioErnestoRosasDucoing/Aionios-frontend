@@ -16,4 +16,9 @@ export const paymentsService = {
     const { data } = await apiClient.patch<Pago>(`/payments/${id}`, { estado_pago });
     return data;
   },
+
+  async update(id: number, payload: { monto?: number; metodo_pago?: string; estado_pago?: EstadoPago }): Promise<Pago> {
+    const { data } = await apiClient.patch<Pago>(`/payments/${id}`, payload);
+    return data;
+  },
 };

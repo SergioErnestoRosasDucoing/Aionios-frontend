@@ -10,6 +10,9 @@ import {
   Clock,
   Search,
   RefreshCw,
+  Pencil,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { paymentsService } from "@/services/payments.service";
 import { servicesService } from "@/services/services.service";
@@ -45,6 +48,8 @@ const methodColor: Record<string, string> = {
   Efectivo: "bg-emerald-50 text-emerald-700",
   Transferencia: "bg-violet-50 text-violet-700",
 };
+
+const METODOS = ["Tarjeta", "Efectivo", "Transferencia"];
 
 const DAY_LABELS = ["D", "L", "M", "X", "J", "V", "S"];
 
@@ -82,6 +87,168 @@ function formatFecha(iso: string) {
   return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
 }
 
+// ─── Edit Modal ────────────────────────────────────────────────────────────────
+interface EditModalProps {
+  pago: Pago;
+  onClose: () => void;
+  onSave: (updated: Pago) => void;
+}
+
+function EditModal({ pago, onClose, onSave }: EditModalProps) {
+  const [monto, setMonto] = useState(parseFloat(pago.monto).toString());
+  const [metodo, setMetodo] = useState(pago.metodo_pago);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const handleSave = async () => {
+    const montoNum = parseFloat(monto);
+    if (isNaN(montoNum) || montoNum <= 0) {
+      setErr("El monto debe ser un número mayor a 0.");
+      return;
+    }
+    setSaving(true);
+    setErr(null);
+    try {
+      const updated = await paymentsService.update(pago.id, { monto: montoNum, metodo_pago: metodo });
+      onSave(updated);
+    } catch {
+      setErr("No se pudo actualizar el pago. Intenta de nuevo.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 z-10">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-bold text-slate-900">Editar pago</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Monto ($)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={monto}
+              onChange={(e) => setMonto(e.target.value)}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">Método de pago</label>
+            <select
+              value={metodo}
+              onChange={(e) => setMetodo(e.target.value)}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+            >
+              {METODOS.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {err && (
+          <p className="mt-3 text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{err}</p>
+        )}
+
+        <div className="flex gap-2 mt-5">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl transition-colors"
+          >
+            {saving ? "Guardando…" : "Guardar cambios"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Cancel Modal ──────────────────────────────────────────────────────────────
+interface CancelModalProps {
+  pago: Pago;
+  onClose: () => void;
+  onConfirm: (updated: Pago) => void;
+}
+
+function CancelModal({ pago, onClose, onConfirm }: CancelModalProps) {
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const newEstado: EstadoPago = pago.estado_pago === "COMPLETADO" ? "REEMBOLSADO" : "FALLIDO";
+  const label = pago.estado_pago === "COMPLETADO" ? "Reembolsar" : "Cancelar pago";
+  const description =
+    pago.estado_pago === "COMPLETADO"
+      ? "Esto marcará el pago como reembolsado. Esta acción no se puede deshacer."
+      : "Esto marcará el pago como fallido / cancelado. Esta acción no se puede deshacer.";
+
+  const handleConfirm = async () => {
+    setSaving(true);
+    setErr(null);
+    try {
+      const updated = await paymentsService.update(pago.id, { estado_pago: newEstado });
+      onConfirm(updated);
+    } catch {
+      setErr("No se pudo actualizar el pago. Intenta de nuevo.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 z-10">
+        <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mx-auto mb-4">
+          <AlertTriangle className="w-6 h-6 text-rose-500" />
+        </div>
+        <h2 className="text-base font-bold text-slate-900 text-center mb-2">{label}</h2>
+        <p className="text-sm text-slate-500 text-center mb-1">
+          Pago de <strong>${parseFloat(pago.monto).toLocaleString()}</strong> — {pago.metodo_pago}
+        </p>
+        <p className="text-xs text-slate-400 text-center mb-5">{description}</p>
+
+        {err && (
+          <p className="mb-3 text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{err}</p>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleConfirm}
+            disabled={saving}
+            className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-rose-500 hover:bg-rose-600 disabled:opacity-50 rounded-xl transition-colors"
+          >
+            {saving ? "Procesando…" : label}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function PaymentsPage() {
   const { business, loading: bizLoading } = useMyBusiness();
   const [pagos, setPagos] = useState<Pago[]>([]);
@@ -89,6 +256,9 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+
+  const [editPago, setEditPago] = useState<Pago | null>(null);
+  const [cancelPago, setCancelPago] = useState<Pago | null>(null);
 
   useEffect(() => {
     if (bizLoading) return;
@@ -122,6 +292,19 @@ export default function PaymentsPage() {
   const weekTotal = weekData.reduce((s, d) => s + d.amount, 0);
   const maxAmount = Math.max(...weekData.map((d) => d.amount), 1);
 
+  const handleEditSave = (updated: Pago) => {
+    setPagos((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    setEditPago(null);
+  };
+
+  const handleCancelConfirm = (updated: Pago) => {
+    setPagos((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    setCancelPago(null);
+  };
+
+  // Only PENDIENTE and COMPLETADO can be edited/cancelled
+  const canEdit = (p: Pago) => p.estado_pago === "PENDIENTE" || p.estado_pago === "COMPLETADO";
+
   if (bizLoading || loading) {
     return (
       <div className="space-y-6 max-w-6xl mx-auto animate-pulse">
@@ -136,6 +319,14 @@ export default function PaymentsPage() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Modals */}
+      {editPago && (
+        <EditModal pago={editPago} onClose={() => setEditPago(null)} onSave={handleEditSave} />
+      )}
+      {cancelPago && (
+        <CancelModal pago={cancelPago} onClose={() => setCancelPago(null)} onConfirm={handleCancelConfirm} />
+      )}
+
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Historial de pagos</h1>
@@ -219,8 +410,9 @@ export default function PaymentsPage() {
             <div className="divide-y divide-slate-100">
               {filtered.map((pay) => {
                 const s = statusConfig[pay.estado_pago];
+                const editable = canEdit(pay);
                 return (
-                  <div key={pay.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+                  <div key={pay.id} className="group px-5 py-3.5 flex items-center gap-4">
                     <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0">
                       <CreditCard className="w-4 h-4 text-slate-500" />
                     </div>
@@ -245,6 +437,29 @@ export default function PaymentsPage() {
                       {s.icon}
                       {s.label}
                     </span>
+
+                    {/* Action buttons — only for editable states */}
+                    {editable && (
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                        <button
+                          onClick={() => setEditPago(pay)}
+                          title="Editar pago"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setCancelPago(pay)}
+                          title={pay.estado_pago === "COMPLETADO" ? "Reembolsar" : "Cancelar pago"}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-colors"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Placeholder to keep row height stable when no actions */}
+                    {!editable && <div className="w-[62px] flex-shrink-0" />}
                   </div>
                 );
               })}
