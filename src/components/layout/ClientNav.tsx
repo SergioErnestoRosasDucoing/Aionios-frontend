@@ -20,16 +20,17 @@ export default function ClientNav() {
   const { user, logout } = useAuth();
 
   const [showNotif, setShowNotif] = useState(false);
+  const [showUser,  setShowUser]  = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const userRef  = useRef<HTMLDivElement>(null);
 
   const initial = user?.nombre?.charAt(0).toUpperCase() ?? "U";
 
   // Cierra el dropdown al hacer clic fuera
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setShowNotif(false);
-      }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setShowNotif(false);
+      if (userRef.current  && !userRef.current.contains(e.target as Node))  setShowUser(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -102,21 +103,30 @@ export default function ClientNav() {
           </div>
 
           {/* Avatar con dropdown */}
-          <div className="relative ml-1 group">
-            <button className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold cursor-pointer">
+          <div ref={userRef} className="relative ml-1">
+            <button
+              onClick={() => setShowUser((v) => !v)}
+              className="w-9 h-9 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold cursor-pointer"
+            >
               {initial}
             </button>
-            <div className="absolute right-0 top-11 w-44 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden z-50 hidden group-hover:block">
-              <Link href="/portal/perfil" className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors">
-                Mi perfil
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 transition-colors border-t border-slate-100"
-              >
-                Cerrar sesion
-              </button>
-            </div>
+            {showUser && (
+              <div className="absolute right-0 top-11 w-44 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden z-50">
+                <Link
+                  href="/portal/perfil"
+                  onClick={() => setShowUser(false)}
+                  className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Mi perfil
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 transition-colors border-t border-slate-100 cursor-pointer"
+                >
+                  Cerrar sesión
+                </button>
+              </div>
+            )}
           </div>
         </nav>
       </div>

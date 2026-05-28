@@ -27,8 +27,8 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
   const initial     = user?.nombre?.charAt(0).toUpperCase() ?? "U";
   const displayName = business?.nombre ?? `${user?.nombre ?? ""} ${user?.apellido ?? ""}`.trim();
 
-  // Fetch pending requests
-  useEffect(() => {
+  // Fetch pending requests — también re-fetcha cuando la pestaña vuelve a estar visible
+  const fetchPending = () => {
     if (!business) return;
     requestsService.getByNegocio(business.id)
       .then((reqs) => {
@@ -37,7 +37,17 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
         setBadgeVisible(pendientes.length > 0);
       })
       .catch(() => {});
-  }, [business]);
+  };
+
+  useEffect(() => {
+    fetchPending();
+  }, [business]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === "visible") fetchPending(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [business]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close on outside click
   useEffect(() => {
@@ -51,7 +61,6 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
 
   const handleOpenNotif = () => {
     setShowNotif((v) => !v);
-    if (!showNotif) setBadgeVisible(false);
   };
 
   const handleLogout = () => { logout(); router.push("/business/login"); };
