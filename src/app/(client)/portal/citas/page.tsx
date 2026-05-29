@@ -383,17 +383,11 @@ function DetailModal({
                 <label className="text-xs font-medium text-slate-600">Monto a pagar</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-                  <input type="number" min="0" step="0.01" value={monto}
-                    onChange={(e) => setMonto(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full pl-7 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  <input type="text" readOnly value={precio > 0 ? precio.toLocaleString() : monto}
+                    className="w-full pl-7 pr-3 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-700 cursor-not-allowed select-none"
                   />
                 </div>
-                {precio > 0 && (
-                  <p className="text-xs text-slate-400">
-                    Precio del servicio: <span className="font-medium text-slate-600">${precio.toLocaleString()}</span>
-                  </p>
-                )}
+                <p className="text-xs text-slate-400">El monto corresponde al precio del servicio contratado.</p>
               </div>
 
               {payError && (
@@ -530,8 +524,8 @@ export default function CitasPage() {
   // ── Pago ──────────────────────────────────────────────────────────────────
   async function handlePay() {
     if (!selected) return;
-    const amount = parseFloat(monto);
-    if (!monto || isNaN(amount) || amount <= 0) { setPayError("Ingresa un monto válido."); return; }
+    const amount = selectedPrecio > 0 ? selectedPrecio : parseFloat(monto);
+    if (!amount || isNaN(amount) || amount <= 0) { setPayError("No se pudo determinar el monto del servicio."); return; }
     setPaying(true); setPayError(null);
     try {
       const pago = await paymentsService.create({
