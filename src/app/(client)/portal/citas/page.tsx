@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   CalendarDays, Plus, Clock, CheckCircle, XCircle,
   MapPin, ChevronRight, Loader2, CreditCard, X,
   DollarSign, Banknote, Smartphone, Star, MessageSquare,
-  CalendarClock,
+  CalendarClock, Building2, Scissors,
 } from "lucide-react";
 import { requestsService } from "@/services/requests.service";
 import { servicesService } from "@/services/services.service";
@@ -25,9 +25,9 @@ const ESTADO_CONFIG = {
 } as const;
 
 const METODOS = [
-  { value: "efectivo",      label: "Efectivo",     icon: Banknote   },
-  { value: "tarjeta",       label: "Tarjeta",      icon: CreditCard },
-  { value: "transferencia", label: "Transferencia",icon: Smartphone },
+  { value: "efectivo",      label: "Efectivo",      icon: Banknote   },
+  { value: "tarjeta",       label: "Tarjeta",       icon: CreditCard },
+  { value: "transferencia", label: "Transferencia", icon: Smartphone },
 ] as const;
 
 function formatFecha(iso: string) {
@@ -40,7 +40,6 @@ function formatHora(iso: string) {
   return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
 }
 
-/** Considera "upcoming" por fecha, ignorando la hora (útil para 00:00) */
 function isUpcomingDate(iso: string) {
   const d = new Date(iso);
   const today = new Date();
@@ -55,10 +54,6 @@ function isPaid(cita: SolicitudCliente) {
 function isAConvenir(svc: Service | undefined) {
   return svc?.unidadDuracion === "a_convenir";
 }
-
-interface PayModal  { cita: SolicitudCliente; precio: number; }
-interface RevModal  { cita: SolicitudCliente; }
-interface ChatModal { cita: SolicitudCliente; }
 
 function StarPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   const [hover, setHover] = useState(0);
@@ -78,28 +73,24 @@ function StarPicker({ value, onChange }: { value: number; onChange: (n: number) 
   );
 }
 
-// ── Tarjeta de cita ───────────────────────────────────────────────────────────
+// ── Tarjeta de cita (clickable) ───────────────────────────────────────────────
 function CitaCard({
-  cita, svc, myReview,
-  onPay, onReview, onChat,
+  cita, svc, onClick,
 }: {
   cita: SolicitudCliente;
   svc: Service | undefined;
-  myReview: Review | undefined;
-  onPay: () => void;
-  onReview: () => void;
-  onChat: () => void;
+  onClick: () => void;
 }) {
   const cfg      = ESTADO_CONFIG[cita.estado];
   const Icon     = cfg.icon;
-  const paid     = isPaid(cita);
   const convenir = isAConvenir(svc);
-  const isPast   = !isUpcomingDate(cita.fecha_hora_propuesta) && !convenir;
-  const canReview = isPast && cita.estado === "CONFIRMADA" && !myReview;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5 flex items-center gap-4">
-      {/* Bloque de fecha — oculto para "a convenir" */}
+    <div
+      onClick={onClick}
+      className="bg-white rounded-2xl border border-slate-200 p-5 flex items-center gap-4 cursor-pointer hover:border-indigo-200 hover:shadow-sm transition-all"
+    >
+      {/* Bloque de fecha / a convenir */}
       {convenir ? (
         <div className="w-[52px] flex-shrink-0 flex flex-col items-center gap-1">
           <CalendarClock className="w-7 h-7 text-indigo-400" />
@@ -123,7 +114,6 @@ function CitaCard({
         <p className="text-sm font-semibold text-slate-900 truncate">{cita.negocio.nombre}</p>
         <p className="text-xs text-slate-500 truncate">{svc?.nombre ?? "Servicio"}</p>
         <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-          {/* Solo mostrar fecha/hora para citas normales */}
           {!convenir && (
             <span className="inline-flex items-center gap-1 text-xs text-slate-400">
               <Clock className="w-3 h-3" />
@@ -139,60 +129,320 @@ function CitaCard({
         </div>
       </div>
 
-      {/* Acciones */}
+      {/* Estado + chevron */}
       <div className="flex flex-col items-end gap-2 flex-shrink-0">
         <span className={`inline-flex items-center gap-1 text-xs font-medium border px-2 py-0.5 rounded-full ${cfg.cls}`}>
           <Icon className="w-3 h-3" />
           {cfg.label}
         </span>
-
-        {/* Chat "a convenir" */}
         {convenir && cita.estado !== "CANCELADA" && (
-          <button onClick={onChat}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-          >
+          <span className="inline-flex items-center gap-1 text-xs text-indigo-500 font-medium">
             <MessageSquare className="w-3 h-3" />
             Coordinar
-          </button>
-        )}
-
-        {/* Pagar */}
-        {cita.estado === "CONFIRMADA" && !isPast && !paid && (
-          <button onClick={onPay}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-          >
-            <DollarSign className="w-3 h-3" />
-            Pagar
-          </button>
-        )}
-
-        {paid && (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-            <CheckCircle className="w-3 h-3" />
-            Pagado
           </span>
         )}
+        <ChevronRight className="w-4 h-4 text-slate-300" />
+      </div>
+    </div>
+  );
+}
 
-        {canReview && (
-          <button onClick={onReview}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
-          >
-            <Star className="w-3 h-3" />
-            Reseñar
+// ── Modal de detalle ──────────────────────────────────────────────────────────
+function DetailModal({
+  cita, svc, myReview, userId, userName,
+  onClose, onPay, onReview,
+  paying, payError,
+  reviewing, revError,
+  metodo, setMetodo, monto, setMonto, precio,
+  rating, setRating, comentario, setComentario,
+  handlePay, handleReview,
+  setCitas,
+}: {
+  cita: SolicitudCliente;
+  svc: Service | undefined;
+  myReview: Review | undefined;
+  userId: number;
+  userName: string;
+  onClose: () => void;
+  onPay: () => void;
+  onReview: () => void;
+  paying: boolean;
+  payError: string | null;
+  reviewing: boolean;
+  revError: string | null;
+  metodo: string;
+  setMetodo: (v: string) => void;
+  monto: string;
+  setMonto: (v: string) => void;
+  precio: number;
+  rating: number;
+  setRating: (v: number) => void;
+  comentario: string;
+  setComentario: (v: string) => void;
+  handlePay: () => void;
+  handleReview: () => void;
+  setCitas: React.Dispatch<React.SetStateAction<SolicitudCliente[]>>;
+}) {
+  const [tab, setTab] = useState<"info" | "chat" | "pay" | "review">("info");
+  const cfg      = ESTADO_CONFIG[cita.estado];
+  const StatusIcon = cfg.icon;
+  const convenir = isAConvenir(svc);
+  const paid     = isPaid(cita);
+  const isPast   = !isUpcomingDate(cita.fecha_hora_propuesta) && !convenir;
+  const canPay   = cita.estado === "CONFIRMADA" && !isPast && !paid;
+  const canReview = isPast && cita.estado === "CONFIRMADA" && !myReview;
+
+  // Escape to close
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-start justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-slate-900">{cita.negocio.nombre}</h2>
+              <span className={`inline-flex items-center gap-1 text-xs font-medium border px-2 py-0.5 rounded-full ${cfg.cls}`}>
+                <StatusIcon className="w-3 h-3" />
+                {cfg.label}
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">Solicitud #{cita.id}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 cursor-pointer mt-0.5">
+            <X className="w-5 h-5" />
           </button>
-        )}
+        </div>
 
-        {myReview && isPast && (
-          <span className="inline-flex items-center gap-1 text-xs text-amber-600">
-            {"★".repeat(myReview.rating)} Tu reseña
-          </span>
-        )}
+        {/* Tabs */}
+        <div className="flex gap-0 border-b border-slate-100 px-5 flex-shrink-0">
+          {[
+            { key: "info",   label: "Detalles", show: true },
+            { key: "chat",   label: "Coordinar", show: convenir && cita.estado !== "CANCELADA" },
+            { key: "pay",    label: "Pagar",     show: canPay },
+            { key: "review", label: "Reseñar",   show: canReview },
+          ].filter((t) => t.show).map((t) => (
+            <button key={t.key} onClick={() => setTab(t.key as typeof tab)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                tab === t.key
+                  ? "border-indigo-600 text-indigo-600"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-        <Link href={`/portal/negocio/${cita.negocio.slug}`}
-          className="inline-flex items-center gap-0.5 text-xs text-indigo-600 hover:text-indigo-700 font-medium"
-        >
-          Ver negocio <ChevronRight className="w-3 h-3" />
-        </Link>
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto p-5">
+          {tab === "info" && (
+            <div className="space-y-4">
+              {/* Servicio */}
+              <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <Scissors className="w-3.5 h-3.5" />
+                  Servicio
+                </div>
+                <p className="text-sm font-semibold text-slate-900">{svc?.nombre ?? "—"}</p>
+                {svc?.descripcion && (
+                  <p className="text-xs text-slate-500">{svc.descripcion}</p>
+                )}
+                <div className="flex items-center gap-4 flex-wrap">
+                  {svc?.precio != null && (
+                    <span className="text-xs text-slate-600">
+                      💰 <span className="font-medium">${svc.precio.toLocaleString()}</span>
+                    </span>
+                  )}
+                  {svc?.duracion != null && !convenir && (
+                    <span className="text-xs text-slate-600">
+                      ⏱ <span className="font-medium">{svc.duracion} {svc.unidadDuracion}</span>
+                    </span>
+                  )}
+                  {convenir && (
+                    <span className="text-xs text-indigo-600 font-medium">
+                      ⏱ A convenir
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Fecha / hora o "A convenir" */}
+              {convenir ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+                  <CalendarClock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">Horario a convenir</p>
+                    <p className="text-xs text-amber-700 mt-0.5">
+                      Usa la pestaña "Coordinar" para chatear con el negocio y definir fecha y hora.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    <CalendarDays className="w-3.5 h-3.5" />
+                    Fecha y hora
+                  </div>
+                  <p className="text-sm font-semibold text-slate-900 capitalize">
+                    {formatFecha(cita.fecha_hora_propuesta)}
+                  </p>
+                  <p className="text-xs text-slate-600">
+                    <Clock className="w-3 h-3 inline mr-1" />
+                    {formatHora(cita.fecha_hora_propuesta)}
+                  </p>
+                </div>
+              )}
+
+              {/* Negocio */}
+              <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <Building2 className="w-3.5 h-3.5" />
+                  Negocio
+                </div>
+                <p className="text-sm font-semibold text-slate-900">{cita.negocio.nombre}</p>
+                {cita.negocio.direccion && (
+                  <p className="text-xs text-slate-500">
+                    <MapPin className="w-3 h-3 inline mr-1" />
+                    {cita.negocio.direccion}
+                  </p>
+                )}
+                <Link href={`/portal/negocio/${cita.negocio.slug}`}
+                  className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700 font-medium mt-1"
+                >
+                  Ver perfil del negocio <ChevronRight className="w-3 h-3" />
+                </Link>
+              </div>
+
+              {/* Pago */}
+              {paid && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3">
+                  <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-900">Pago registrado</p>
+                    <p className="text-xs text-emerald-700 mt-0.5">
+                      ${cita.pagos.find((p) => p.estado_pago === "COMPLETADO")?.monto.toLocaleString()} —{" "}
+                      {cita.pagos.find((p) => p.estado_pago === "COMPLETADO")?.metodo_pago}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Mi reseña */}
+              {myReview && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-amber-800 mb-1">Tu reseña</p>
+                  <p className="text-amber-500 text-sm">{"★".repeat(myReview.rating)}{"☆".repeat(5 - myReview.rating)}</p>
+                  {myReview.comentario && <p className="text-xs text-amber-700 mt-1">{myReview.comentario}</p>}
+                </div>
+              )}
+
+            </div>
+          )}
+
+          {tab === "chat" && (
+            <RequestChat
+              solicitudId={cita.id}
+              autorId={userId}
+              autorNombre={userName}
+              autorTipo="cliente"
+            />
+          )}
+
+          {tab === "pay" && (
+            <div className="space-y-4">
+              <div className="bg-slate-50 rounded-xl p-3 space-y-1">
+                <p className="text-sm font-semibold text-slate-800">{cita.negocio.nombre}</p>
+                <p className="text-xs text-slate-500">{svc?.nombre ?? "Servicio"}</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-slate-600">Método de pago</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {METODOS.map(({ value, label, icon: Icon }) => (
+                    <button key={value} onClick={() => setMetodo(value)}
+                      className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs font-medium transition-colors cursor-pointer ${
+                        metodo === value
+                          ? "border-indigo-400 bg-indigo-50 text-indigo-700"
+                          : "border-slate-200 text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/40"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-600">Monto a pagar</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                  <input type="number" min="0" step="0.01" value={monto}
+                    onChange={(e) => setMonto(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full pl-7 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                {precio > 0 && (
+                  <p className="text-xs text-slate-400">
+                    Precio del servicio: <span className="font-medium text-slate-600">${precio.toLocaleString()}</span>
+                  </p>
+                )}
+              </div>
+
+              {payError && (
+                <div className="rounded-xl bg-rose-50 border border-rose-200 p-2.5 text-xs text-rose-700">{payError}</div>
+              )}
+
+              <button onClick={handlePay} disabled={paying}
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer"
+              >
+                {paying ? "Guardando..." : "Confirmar pago"}
+              </button>
+            </div>
+          )}
+
+          {tab === "review" && (
+            <div className="space-y-4">
+              <div className="bg-slate-50 rounded-xl p-3 space-y-1">
+                <p className="text-sm font-semibold text-slate-800">{cita.negocio.nombre}</p>
+                <p className="text-xs text-slate-500">{svc?.nombre ?? "Servicio"}</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-slate-600">Calificación</label>
+                <StarPicker value={rating} onChange={setRating} />
+                <p className="text-xs text-slate-400">
+                  {["", "Muy malo", "Malo", "Regular", "Bueno", "Excelente"][rating]}
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-slate-600">Comentario (opcional)</label>
+                <textarea rows={3} value={comentario} onChange={(e) => setComentario(e.target.value)}
+                  placeholder="Cuéntanos tu experiencia..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none placeholder:text-slate-400"
+                />
+              </div>
+
+              {revError && (
+                <div className="rounded-xl bg-rose-50 border border-rose-200 p-2.5 text-xs text-rose-700">{revError}</div>
+              )}
+
+              <button onClick={handleReview} disabled={reviewing || rating === 0}
+                className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer"
+              >
+                {reviewing ? "Enviando..." : "Publicar reseña"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -219,14 +469,15 @@ export default function CitasPage() {
   const [loading,  setLoading]  = useState(true);
   const [tab,      setTab]      = useState<"proximas" | "historial">("proximas");
 
-  const [payModal,   setPayModal]   = useState<PayModal | null>(null);
+  const [selected, setSelected] = useState<SolicitudCliente | null>(null);
+
+  // Pay state
   const [metodo,     setMetodo]     = useState("efectivo");
   const [monto,      setMonto]      = useState("");
   const [paying,     setPaying]     = useState(false);
   const [payError,   setPayError]   = useState<string | null>(null);
 
-  const [revModal,   setRevModal]   = useState<RevModal | null>(null);
-  const [chatModal,  setChatModal]  = useState<ChatModal | null>(null);
+  // Review state
   const [rating,     setRating]     = useState(5);
   const [comentario, setComentario] = useState("");
   const [reviewing,  setReviewing]  = useState(false);
@@ -246,8 +497,6 @@ export default function CitasPage() {
   const reviewFor  = (negocioId: number) => reviews.find((r) => r.negocio_id === negocioId);
 
   // ── Clasificación ─────────────────────────────────────────────────────────
-  // "a convenir": vive en "próximas" mientras no esté cancelada (ignora la hora 00:00)
-  // Regular: "próximas" = fecha futura + no cancelada
   const isProxima = (c: SolicitudCliente) => {
     const svc = serviceFor(c.id_servicio_nosql);
     if (isAConvenir(svc)) return c.estado !== "CANCELADA";
@@ -257,36 +506,43 @@ export default function CitasPage() {
   const proximas  = citas.filter(isProxima);
   const historial = citas.filter((c) => !isProxima(c));
 
-  // Sub-grupos dentro de "Próximas"
   const confirmadas = proximas.filter((c) => c.estado === "CONFIRMADA");
   const pendientes  = proximas.filter((c) => c.estado === "PENDIENTE");
 
-  const displayed  = tab === "proximas" ? proximas : historial;
+  const displayed = tab === "proximas" ? proximas : historial;
 
-  // ── Pago ──────────────────────────────────────────────────────────────────
-  function openPay(cita: SolicitudCliente) {
-    const precio = serviceFor(cita.id_servicio_nosql)?.precio ?? 0;
-    setPayModal({ cita, precio });
-    setMonto(precio > 0 ? String(precio) : "");
+  // ── Computed for selected modal ────────────────────────────────────────────
+  const selectedSvc   = selected ? serviceFor(selected.id_servicio_nosql) : undefined;
+  const selectedRev   = selected ? reviewFor(selected.id_negocio) : undefined;
+  const selectedPrecio = selectedSvc?.precio ?? 0;
+
+  function openDetail(cita: SolicitudCliente) {
+    const svc = serviceFor(cita.id_servicio_nosql);
+    setSelected(cita);
     setMetodo("efectivo");
+    setMonto(svc?.precio != null && svc.precio > 0 ? String(svc.precio) : "");
     setPayError(null);
+    setRating(5);
+    setComentario("");
+    setRevError(null);
   }
 
+  // ── Pago ──────────────────────────────────────────────────────────────────
   async function handlePay() {
-    if (!payModal) return;
+    if (!selected) return;
     const amount = parseFloat(monto);
     if (!monto || isNaN(amount) || amount <= 0) { setPayError("Ingresa un monto válido."); return; }
     setPaying(true); setPayError(null);
     try {
       const pago = await paymentsService.create({
-        id_cita: payModal.cita.id, monto: amount, metodo_pago: metodo, estado_pago: "COMPLETADO",
+        id_cita: selected.id, monto: amount, metodo_pago: metodo, estado_pago: "COMPLETADO",
       });
-      setCitas((prev) => prev.map((c) =>
-        c.id === payModal.cita.id
-          ? { ...c, pagos: [...c.pagos, { id: pago.id, monto: pago.monto, metodo_pago: pago.metodo_pago, estado_pago: "COMPLETADO" }] }
-          : c,
-      ));
-      setPayModal(null);
+      const updated: SolicitudCliente = {
+        ...selected,
+        pagos: [...selected.pagos, { id: pago.id, monto: pago.monto, metodo_pago: pago.metodo_pago, estado_pago: "COMPLETADO" }],
+      };
+      setCitas((prev) => prev.map((c) => c.id === selected.id ? updated : c));
+      setSelected(updated);
     } catch (err: unknown) {
       const msg = (err as any)?.response?.data?.message;
       setPayError(typeof msg === "string" ? msg : "No se pudo registrar el pago.");
@@ -294,17 +550,13 @@ export default function CitasPage() {
   }
 
   // ── Reseña ────────────────────────────────────────────────────────────────
-  function openReview(cita: SolicitudCliente) {
-    setRevModal({ cita }); setRating(5); setComentario(""); setRevError(null);
-  }
-
   async function handleReview() {
-    if (!revModal || !user) return;
+    if (!selected || !user) return;
     if (rating < 1) { setRevError("Selecciona una calificación."); return; }
     setReviewing(true); setRevError(null);
     try {
       const rev = await reviewsService.create({
-        negocio_id:    revModal.cita.id_negocio,
+        negocio_id:    selected.id_negocio,
         usuario_id:    user.id,
         nombre_cliente:`${user.nombre}`,
         rating,
@@ -312,12 +564,14 @@ export default function CitasPage() {
         fecha:         new Date().toISOString(),
       });
       setReviews((prev) => [...prev, rev]);
-      setRevModal(null);
+      setSelected(null);
     } catch (err: unknown) {
       const msg = (err as any)?.response?.data?.message;
       setRevError(typeof msg === "string" ? msg : "No se pudo enviar la reseña.");
     } finally { setReviewing(false); }
   }
+
+  const handleClose = useCallback(() => setSelected(null), []);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -377,7 +631,6 @@ export default function CitasPage() {
           )}
         </div>
       ) : tab === "proximas" ? (
-        /* ── Próximas: dos sub-secciones ── */
         <div className="space-y-6">
           <Section title="Confirmadas" count={confirmadas.length}>
             {confirmadas.map((cita) => (
@@ -385,10 +638,7 @@ export default function CitasPage() {
                 key={cita.id}
                 cita={cita}
                 svc={serviceFor(cita.id_servicio_nosql)}
-                myReview={reviewFor(cita.id_negocio)}
-                onPay={() => openPay(cita)}
-                onReview={() => openReview(cita)}
-                onChat={() => setChatModal({ cita })}
+                onClick={() => openDetail(cita)}
               />
             ))}
           </Section>
@@ -399,185 +649,52 @@ export default function CitasPage() {
                 key={cita.id}
                 cita={cita}
                 svc={serviceFor(cita.id_servicio_nosql)}
-                myReview={reviewFor(cita.id_negocio)}
-                onPay={() => openPay(cita)}
-                onReview={() => openReview(cita)}
-                onChat={() => setChatModal({ cita })}
+                onClick={() => openDetail(cita)}
               />
             ))}
           </Section>
         </div>
       ) : (
-        /* ── Historial: lista plana ── */
         <div className="space-y-3">
           {historial.map((cita) => (
             <CitaCard
               key={cita.id}
               cita={cita}
               svc={serviceFor(cita.id_servicio_nosql)}
-              myReview={reviewFor(cita.id_negocio)}
-              onPay={() => openPay(cita)}
-              onReview={() => openReview(cita)}
-              onChat={() => setChatModal({ cita })}
+              onClick={() => openDetail(cita)}
             />
           ))}
         </div>
       )}
 
-      {/* ── Modal de pago ── */}
-      {payModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-slate-900">Registrar pago</h2>
-              <button onClick={() => setPayModal(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="bg-slate-50 rounded-xl p-3 space-y-1">
-              <p className="text-sm font-semibold text-slate-800">{payModal.cita.negocio.nombre}</p>
-              <p className="text-xs text-slate-500">
-                {serviceFor(payModal.cita.id_servicio_nosql)?.nombre ?? "Servicio"}
-                {!isAConvenir(serviceFor(payModal.cita.id_servicio_nosql)) && (
-                  <> · {formatHora(payModal.cita.fecha_hora_propuesta)},{" "}
-                  {new Date(payModal.cita.fecha_hora_propuesta).toLocaleDateString("es-MX", { day: "numeric", month: "long" })}</>
-                )}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-slate-600">Método de pago</label>
-              <div className="grid grid-cols-3 gap-2">
-                {METODOS.map(({ value, label, icon: Icon }) => (
-                  <button key={value} onClick={() => setMetodo(value)}
-                    className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border text-xs font-medium transition-colors cursor-pointer ${
-                      metodo === value
-                        ? "border-indigo-400 bg-indigo-50 text-indigo-700"
-                        : "border-slate-200 text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/40"
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-600">Monto a pagar</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-                <input type="number" min="0" step="0.01" value={monto}
-                  onChange={(e) => setMonto(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full pl-7 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              {payModal.precio > 0 && (
-                <p className="text-xs text-slate-400">
-                  Precio del servicio: <span className="font-medium text-slate-600">${payModal.precio.toLocaleString()}</span>
-                </p>
-              )}
-            </div>
-
-            {payError && (
-              <div className="rounded-xl bg-rose-50 border border-rose-200 p-2.5 text-xs text-rose-700">{payError}</div>
-            )}
-
-            <div className="flex gap-3">
-              <button onClick={() => setPayModal(null)}
-                className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button onClick={handlePay} disabled={paying}
-                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:text-slate-400 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer"
-              >
-                {paying ? "Guardando..." : "Confirmar pago"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Modal de chat (a_convenir) ── */}
-      {chatModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[85vh]">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
-              <div>
-                <h2 className="text-base font-bold text-slate-900">Coordinar cita</h2>
-                <p className="text-xs text-slate-500 mt-0.5">{chatModal.cita.negocio.nombre}</p>
-              </div>
-              <button onClick={() => setChatModal(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-hidden p-5">
-              <RequestChat
-                solicitudId={chatModal.cita.id}
-                autorId={user!.id}
-                autorNombre={`${user!.nombre} ${user!.apellido ?? ""}`.trim()}
-                autorTipo="cliente"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Modal de reseña ── */}
-      {revModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-slate-900">Dejar reseña</h2>
-              <button onClick={() => setRevModal(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="bg-slate-50 rounded-xl p-3 space-y-1">
-              <p className="text-sm font-semibold text-slate-800">{revModal.cita.negocio.nombre}</p>
-              <p className="text-xs text-slate-500">
-                {serviceFor(revModal.cita.id_servicio_nosql)?.nombre ?? "Servicio"}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-slate-600">Calificación</label>
-              <StarPicker value={rating} onChange={setRating} />
-              <p className="text-xs text-slate-400">
-                {["", "Muy malo", "Malo", "Regular", "Bueno", "Excelente"][rating]}
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-slate-600">Comentario (opcional)</label>
-              <textarea rows={3} value={comentario} onChange={(e) => setComentario(e.target.value)}
-                placeholder="Cuéntanos tu experiencia..."
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none placeholder:text-slate-400"
-              />
-            </div>
-
-            {revError && (
-              <div className="rounded-xl bg-rose-50 border border-rose-200 p-2.5 text-xs text-rose-700">{revError}</div>
-            )}
-
-            <div className="flex gap-3">
-              <button onClick={() => setRevModal(null)}
-                className="flex-1 py-2.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                Cancelar
-              </button>
-              <button onClick={handleReview} disabled={reviewing || rating === 0}
-                className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:bg-slate-200 disabled:text-slate-400 text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer"
-              >
-                {reviewing ? "Enviando..." : "Publicar reseña"}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ── Modal de detalle ── */}
+      {selected && user && (
+        <DetailModal
+          cita={selected}
+          svc={selectedSvc}
+          myReview={selectedRev}
+          userId={user.id}
+          userName={`${user.nombre} ${user.apellido ?? ""}`.trim()}
+          onClose={handleClose}
+          onPay={() => {}}
+          onReview={() => {}}
+          paying={paying}
+          payError={payError}
+          reviewing={reviewing}
+          revError={revError}
+          metodo={metodo}
+          setMetodo={setMetodo}
+          monto={monto}
+          setMonto={setMonto}
+          precio={selectedPrecio}
+          rating={rating}
+          setRating={setRating}
+          comentario={comentario}
+          setComentario={setComentario}
+          handlePay={handlePay}
+          handleReview={handleReview}
+          setCitas={setCitas}
+        />
       )}
     </div>
   );
