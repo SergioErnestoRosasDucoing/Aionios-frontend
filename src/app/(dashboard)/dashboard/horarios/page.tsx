@@ -292,12 +292,16 @@ export default function HorariosPage() {
     return di >= 0 && di <= 6;
   });
 
-  // Citas a_convenir activas (sin hora fija)
-  const convenirRequests = requests.filter((r) => {
-    if (r.estado === "CANCELADA") return false;
-    const svc = serviceFor(r.id_servicio_nosql);
-    return isAConvenir(svc);
+  // Citas a_convenir activas — separadas por estado
+  const convenirPendientes  = requests.filter((r) => {
+    if (r.estado !== "PENDIENTE") return false;
+    return isAConvenir(serviceFor(r.id_servicio_nosql));
   });
+  const convenirConfirmadas = requests.filter((r) => {
+    if (r.estado !== "CONFIRMADA") return false;
+    return isAConvenir(serviceFor(r.id_servicio_nosql));
+  });
+  const convenirRequests = [...convenirPendientes, ...convenirConfirmadas];
 
   const weekBlocks = blocks.filter((b) => {
     if (!b.fecha) return false;
@@ -376,37 +380,68 @@ export default function HorariosPage() {
         </div>
       )}
 
-      {/* Citas a convenir */}
-      {convenirRequests.length > 0 && (
+      {/* Citas a convenir — pendientes */}
+      {convenirPendientes.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-3">
             <MessageSquare className="w-4 h-4 text-amber-600" />
             <h2 className="text-sm font-semibold text-amber-800">
-              Citas pendientes de coordinar ({convenirRequests.length})
+              Citas pendientes de coordinar ({convenirPendientes.length})
             </h2>
           </div>
           <div className="space-y-2">
-            {convenirRequests.map((r) => {
+            {convenirPendientes.map((r) => {
               const svc = serviceFor(r.id_servicio_nosql);
               return (
-                <div
-                  key={r.id}
-                  onClick={() => setActiveReq(r)}
+                <div key={r.id} onClick={() => setActiveReq(r)}
                   className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-amber-200 cursor-pointer hover:shadow-sm transition-shadow"
                 >
                   <div>
                     <p className="text-sm font-semibold text-slate-900">
                       {r.usuario.nombre} {r.usuario.apellido}
                     </p>
-                    <p className="text-xs text-slate-500">{svc?.nombre ?? "Servicio"} · {formatFechaLarga(r.fecha_hora_propuesta)}</p>
+                    <p className="text-xs text-slate-500">{svc?.nombre ?? "Servicio"}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
-                      r.estado === "CONFIRMADA" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
-                    }`}>
-                      {r.estado === "CONFIRMADA" ? "Confirmada" : "Pendiente"}
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
+                      Pendiente
                     </span>
                     <MessageSquare className="w-4 h-4 text-amber-500" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Citas a convenir — confirmadas */}
+      {convenirConfirmadas.length > 0 && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <CheckCircle className="w-4 h-4 text-emerald-600" />
+            <h2 className="text-sm font-semibold text-emerald-800">
+              Citas coordinadas y confirmadas ({convenirConfirmadas.length})
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {convenirConfirmadas.map((r) => {
+              const svc = serviceFor(r.id_servicio_nosql);
+              return (
+                <div key={r.id} onClick={() => setActiveReq(r)}
+                  className="flex items-center justify-between bg-white rounded-xl px-4 py-3 border border-emerald-200 cursor-pointer hover:shadow-sm transition-shadow"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {r.usuario.nombre} {r.usuario.apellido}
+                    </p>
+                    <p className="text-xs text-slate-500">{svc?.nombre ?? "Servicio"}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
+                      Confirmada
+                    </span>
+                    <MessageSquare className="w-4 h-4 text-emerald-500" />
                   </div>
                 </div>
               );
