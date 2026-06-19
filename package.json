@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run",
+    "test:e2e": "cypress run --spec cypress/e2e/viewport-compatibility.cy.ts"
   },
   "dependencies": {
     "axios": "^1.16.1",
@@ -21,6 +24,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "cypress": "^15.17.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
