@@ -106,7 +106,8 @@ export default function PortalHome() {
             <div className="flex-1 flex items-center gap-2 px-3">
               <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
               <input
-                type="text"
+                type="search"
+                aria-label="Buscar negocio o servicio"
                 value={heroSearch}
                 onChange={(e) => setHeroSearch(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleHeroSearch()}

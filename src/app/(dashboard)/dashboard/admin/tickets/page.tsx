@@ -339,7 +339,8 @@ export default function AdminTicketsPage() {
           <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2.5">
             <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
             <input
-              type="text"
+              type="search"
+              aria-label="Buscar ticket por asunto"
               placeholder="Buscar por asunto..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}

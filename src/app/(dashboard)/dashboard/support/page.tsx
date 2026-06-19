@@ -294,7 +294,8 @@ export default function SupportPage() {
           <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2.5">
             <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
             <input
-              type="text"
+              type="search"
+              aria-label="Buscar en mis tickets"
               placeholder="Buscar en tickets..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -422,6 +423,7 @@ export default function SupportPage() {
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-slate-700">Asunto *</label>
                 <input
+                  aria-label="Asunto del ticket de soporte"
                   value={form.asunto}
                   onChange={(e) => setForm((p) => ({ ...p, asunto: e.target.value }))}
                   placeholder="Describe brevemente el problema"

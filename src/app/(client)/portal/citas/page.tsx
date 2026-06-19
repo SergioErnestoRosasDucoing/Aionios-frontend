@@ -383,7 +383,7 @@ function DetailModal({
                 <label className="text-xs font-medium text-slate-600">Monto a pagar</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-                  <input type="text" readOnly value={precio > 0 ? precio.toLocaleString() : monto}
+                  <input type="text" readOnly aria-label="Monto a pagar" value={precio > 0 ? precio.toLocaleString() : monto}
                     className="w-full pl-7 pr-3 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-700 cursor-not-allowed select-none"
                   />
                 </div>

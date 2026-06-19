@@ -590,27 +590,27 @@ export default function HorariosPage() {
             <div className="space-y-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">Fecha</label>
-                <input type="date" value={blockForm.fecha} min={todayStr}
+                <input type="date" aria-label="Fecha del bloqueo" value={blockForm.fecha} min={todayStr}
                   onChange={(e) => setBlockForm((p) => ({ ...p, fecha: e.target.value, hora_inicio: "09:00", hora_fin: "10:00" }))}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-slate-600">Desde</label>
-                  <input type="time" value={blockForm.hora_inicio} min={isBlockDateToday ? nowTimeStr : undefined}
+                  <input type="time" aria-label="Hora inicio del bloqueo" value={blockForm.hora_inicio} min={isBlockDateToday ? nowTimeStr : undefined}
                     onChange={(e) => setBlockForm((p) => ({ ...p, hora_inicio: e.target.value }))}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-slate-600">Hasta</label>
-                  <input type="time" value={blockForm.hora_fin}
+                  <input type="time" aria-label="Hora fin del bloqueo" value={blockForm.hora_fin}
                     onChange={(e) => setBlockForm((p) => ({ ...p, hora_fin: e.target.value }))}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-600">Motivo (opcional)</label>
-                <input type="text" value={blockForm.motivo}
+                <input type="text" aria-label="Motivo del bloqueo de horario" value={blockForm.motivo}
                   onChange={(e) => setBlockForm((p) => ({ ...p, motivo: e.target.value }))}
                   placeholder="Ej. Reunión de equipo"
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500" />

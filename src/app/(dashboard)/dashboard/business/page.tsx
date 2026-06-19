@@ -157,6 +157,7 @@ export default function BusinessPage() {
               <div key={field} className="space-y-1.5">
                 <label className="block text-sm font-medium text-slate-700">{label}</label>
                 <input
+                  aria-label={label}
                   value={createForm[field as keyof typeof createForm]}
                   onChange={(e) => setCreateForm((p) => ({ ...p, [field]: e.target.value }))}
                   placeholder={placeholder}
@@ -235,14 +236,14 @@ export default function BusinessPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-slate-700">Nombre del negocio</label>
-            <input value={form.nombre} onChange={handleChange("nombre")}
+            <input aria-label="Nombre del negocio" value={form.nombre} onChange={handleChange("nombre")}
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-slate-700">
               <span className="flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" /> URL del negocio</span>
             </label>
-            <input value={form.slug} onChange={handleChange("slug")}
+            <input aria-label="URL del negocio" value={form.slug} onChange={handleChange("slug")}
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
             <p className="text-xs text-slate-400">Ej: mi-negocio → aionios.com/portal/negocio/mi-negocio</p>
           </div>
@@ -262,14 +263,14 @@ export default function BusinessPage() {
             <label className="block text-sm font-medium text-slate-700">
               <span className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> Teléfono</span>
             </label>
-            <input value={form.telefono_comercial} onChange={handleChange("telefono_comercial")} type="tel"
+            <input aria-label="Teléfono comercial" value={form.telefono_comercial} onChange={handleChange("telefono_comercial")} type="tel"
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
           </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-slate-700">
               <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Dirección</span>
             </label>
-            <input value={form.direccion} onChange={handleChange("direccion")}
+            <input aria-label="Dirección del negocio" value={form.direccion} onChange={handleChange("direccion")}
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm" />
           </div>
           <div className="sm:col-span-2 space-y-1.5">
@@ -356,6 +357,7 @@ export default function BusinessPage() {
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-slate-700">Slogan</label>
             <input
+              aria-label="Slogan del negocio"
               value={uiForm.slogan}
               onChange={(e) => setUiForm((p) => ({ ...p, slogan: e.target.value }))}
               placeholder="Ej. Tu estilo, nuestra pasión"

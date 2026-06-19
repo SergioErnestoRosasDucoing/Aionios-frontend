@@ -364,6 +364,7 @@ export default function PerfilPage() {
                 <div key={label} className="space-y-1.5">
                   <label className="text-xs font-medium text-slate-600">{label}</label>
                   <input
+                    aria-label={label}
                     value={value}
                     onChange={(e) => set(e.target.value)}
                     placeholder={placeholder}
@@ -491,6 +492,7 @@ export default function PerfilPage() {
               Escribe <strong className="text-rose-700">ELIMINAR</strong> para confirmar que deseas borrar tu cuenta de forma permanente.
             </p>
             <input
+              aria-label="Escribe ELIMINAR para confirmar la eliminación de tu cuenta"
               value={deleteInput}
               onChange={(e) => setDeleteInput(e.target.value)}
               placeholder="ELIMINAR"

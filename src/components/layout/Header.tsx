@@ -45,7 +45,8 @@ export default function Header({ onMobileMenuOpen }: HeaderProps) {
         <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 w-44 sm:w-72">
           <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <input
-            type="text"
+            type="search"
+            aria-label="Buscar en el panel"
             placeholder="Buscar..."
             className="bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none w-full"
           />

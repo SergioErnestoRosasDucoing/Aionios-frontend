@@ -371,6 +371,7 @@ export default function BusinessDetailPage() {
                     <label className="text-xs font-medium text-slate-600">Fecha</label>
                     <input
                       type="date"
+                      aria-label="Fecha de la cita"
                       value={selectedDate}
                       min={todayStr()}
                       onChange={(e) => { setSelectedDate(e.target.value); setSelectedTime(""); }}

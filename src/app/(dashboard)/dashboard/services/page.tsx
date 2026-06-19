@@ -35,6 +35,7 @@ function ServiceFormFields({
       <div className="space-y-1.5">
         <label className="block text-sm font-medium text-slate-700">Nombre *</label>
         <input
+          aria-label="Nombre del servicio"
           value={form.nombre}
           onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))}
           placeholder="Ej. Corte de cabello"
@@ -44,6 +45,7 @@ function ServiceFormFields({
       <div className="space-y-1.5">
         <label className="block text-sm font-medium text-slate-700">Descripcion *</label>
         <textarea
+          aria-label="Descripción del servicio"
           rows={2}
           value={form.descripcion}
           onChange={(e) => setForm((p) => ({ ...p, descripcion: e.target.value }))}
@@ -55,6 +57,7 @@ function ServiceFormFields({
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-slate-700">Precio ($)</label>
           <input
+            aria-label="Precio del servicio en pesos"
             type="text"
             inputMode="decimal"
             placeholder="0"
@@ -69,6 +72,7 @@ function ServiceFormFields({
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-slate-700">Unidad de duración</label>
           <select
+            aria-label="Unidad de duración del servicio"
             value={form.unidadDuracion}
             onChange={(e) => setForm((p) => ({
               ...p,
@@ -87,6 +91,7 @@ function ServiceFormFields({
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-slate-700">Cantidad</label>
           <input
+            aria-label="Cantidad de duración"
             type="text"
             inputMode="numeric"
             placeholder="1"
@@ -259,7 +264,8 @@ export default function ServicesPage() {
           <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
             <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
             <input
-              type="text"
+              type="search"
+              aria-label="Buscar servicio"
               placeholder="Buscar servicio..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}

@@ -145,7 +145,7 @@ export default function BusinessRegisterPage() {
           </div>
 
           {errors.general && (
-            <div className="mb-4 rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">{errors.general}</div>
+            <div aria-live="assertive" role="alert" className="mb-4 rounded-xl bg-rose-50 border border-rose-200 px-4 py-3 text-sm text-rose-700">{errors.general}</div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -153,14 +153,18 @@ export default function BusinessRegisterPage() {
               <div className="space-y-1.5">
                 <label htmlFor="nombre" className="block text-sm font-medium text-slate-700">Nombre</label>
                 <input id="nombre" type="text" placeholder="Juan" value={fields.nombre} onChange={set("nombre")}
+                  aria-describedby={errors.nombre ? "nombre-error" : undefined}
+                  aria-invalid={!!errors.nombre}
                   className={inputClass("nombre")} />
-                {errors.nombre && <p className="text-xs text-rose-600">{errors.nombre}</p>}
+                {errors.nombre && <p id="nombre-error" role="alert" className="text-xs text-rose-600">{errors.nombre}</p>}
               </div>
               <div className="space-y-1.5">
                 <label htmlFor="apellido" className="block text-sm font-medium text-slate-700">Apellido</label>
                 <input id="apellido" type="text" placeholder="García" value={fields.apellido} onChange={set("apellido")}
+                  aria-describedby={errors.apellido ? "apellido-error" : undefined}
+                  aria-invalid={!!errors.apellido}
                   className={inputClass("apellido")} />
-                {errors.apellido && <p className="text-xs text-rose-600">{errors.apellido}</p>}
+                {errors.apellido && <p id="apellido-error" role="alert" className="text-xs text-rose-600">{errors.apellido}</p>}
               </div>
             </div>
 
@@ -173,19 +177,23 @@ export default function BusinessRegisterPage() {
                   setFields((prev) => ({ ...prev, telefono: val }));
                   setErrors((prev) => ({ ...prev, telefono: undefined }));
                 }}
+                aria-describedby={errors.telefono ? "telefono-error" : "telefono-hint"}
+                aria-invalid={!!errors.telefono}
                 className={inputClass("telefono")}
               />
               {errors.telefono
-                ? <p className="text-xs text-rose-600">{errors.telefono}</p>
-                : <p className="text-xs text-slate-400">10 dígitos sin espacios ni guiones</p>
+                ? <p id="telefono-error" role="alert" className="text-xs text-rose-600">{errors.telefono}</p>
+                : <p id="telefono-hint" className="text-xs text-slate-400">10 dígitos sin espacios ni guiones</p>
               }
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="email" className="block text-sm font-medium text-slate-700">Correo electrónico</label>
               <input id="email" type="email" placeholder="tu@negocio.com" value={fields.email} onChange={set("email")}
+                aria-describedby={errors.email ? "email-error" : undefined}
+                aria-invalid={!!errors.email}
                 className={inputClass("email")} />
-              {errors.email && <p className="text-xs text-rose-600">{errors.email}</p>}
+              {errors.email && <p id="email-error" role="alert" className="text-xs text-rose-600">{errors.email}</p>}
             </div>
 
             <PasswordInput

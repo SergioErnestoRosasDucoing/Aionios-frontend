@@ -201,7 +201,8 @@ export default function PaymentsPage() {
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex-1">
               <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
               <input
-                type="text"
+                type="search"
+                aria-label="Buscar cliente"
                 placeholder="Buscar cliente..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}

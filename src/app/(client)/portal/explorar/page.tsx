@@ -72,7 +72,8 @@ function ExplorarContent() {
         <div className="flex-1 flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2.5">
           <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <input
-            type="text"
+            type="search"
+            aria-label="Buscar negocio por nombre o servicio"
             placeholder="Busca por nombre o servicio..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
