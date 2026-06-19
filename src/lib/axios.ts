@@ -16,15 +16,60 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// On 401, clear session and redirect to login
+let isRefreshing = false;
+let refreshQueue: Array<(token: string) => void> = [];
+
+function processQueue(newToken: string) {
+  refreshQueue.forEach((resolve) => resolve(newToken));
+  refreshQueue = [];
+}
+
+// On 401: try refresh token before redirecting to login
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("aionios_token");
-      localStorage.removeItem("aionios_user");
-      window.location.href = "/login";
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (
+      error.response?.status === 401 &&
+      typeof window !== "undefined" &&
+      !originalRequest._retry
+    ) {
+      const refreshToken = localStorage.getItem("aionios_refresh_token");
+
+      if (!refreshToken) {
+        tokenStorage.remove();
+        window.location.href = "/login";
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          refreshQueue.push((newToken: string) => {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            resolve(apiClient(originalRequest));
+          });
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken });
+        tokenStorage.set(data.token, data.refreshToken);
+        processQueue(data.token);
+        originalRequest.headers.Authorization = `Bearer ${data.token}`;
+        return apiClient(originalRequest);
+      } catch {
+        tokenStorage.remove();
+        window.location.href = "/login";
+        return Promise.reject(error);
+      } finally {
+        isRefreshing = false;
+      }
     }
+
     return Promise.reject(error);
   }
 );
@@ -33,13 +78,20 @@ export const tokenStorage = {
   get: (): string | null =>
     typeof window !== "undefined" ? localStorage.getItem("aionios_token") : null,
 
-  set: (token: string): void => {
-    if (typeof window !== "undefined") localStorage.setItem("aionios_token", token);
+  getRefresh: (): string | null =>
+    typeof window !== "undefined" ? localStorage.getItem("aionios_refresh_token") : null,
+
+  set: (token: string, refreshToken: string): void => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("aionios_token", token);
+      localStorage.setItem("aionios_refresh_token", refreshToken);
+    }
   },
 
   remove: (): void => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("aionios_token");
+      localStorage.removeItem("aionios_refresh_token");
       localStorage.removeItem("aionios_user");
     }
   },
